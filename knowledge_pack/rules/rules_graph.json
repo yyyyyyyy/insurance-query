@@ -1,0 +1,2980 @@
+{
+  "graph_type": "insurance_decision_rules",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "UW-001",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "投保人故意或因重大过失未如实告知，保险人有权解除合同",
+      "decision": "reject"
+    },
+    {
+      "id": "UW-002",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "合同成立超过两年，保险人不得以未如实告知为由解除合同",
+      "decision": "standard_accept"
+    },
+    {
+      "id": "UW-003",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "确诊恶性肿瘤（甲状腺癌TNM-I期及以下除外），重疾险、医疗险一律拒保",
+      "decision": "reject"
+    },
+    {
+      "id": "UW-004",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "甲状腺癌TNM-I期，术后满1年无复发，部分医疗险可标准承保",
+      "decision": "standard_accept"
+    },
+    {
+      "id": "UW-005",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "急性心肌梗塞病史，重疾险/医疗险拒保",
+      "decision": "reject"
+    },
+    {
+      "id": "UW-006",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "高血压（1级，血压≤160/100），定期寿险可标准承保，医疗险需加费",
+      "decision": "standard_accept"
+    },
+    {
+      "id": "UW-007",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "高血压（2级及以上，收缩压≥160或舒张压≥100），医疗险拒保/除外",
+      "decision": "exclusion"
+    },
+    {
+      "id": "UW-008",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "确诊糖尿病，医疗险/重疾险一律拒保",
+      "decision": "reject"
+    },
+    {
+      "id": "UW-009",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "糖尿病前期（糖耐量异常）未确诊，定期寿险可标准承保",
+      "decision": "standard_accept"
+    },
+    {
+      "id": "UW-010",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "甲状腺结节TI-RADS 1-2级，医疗险除外甲状腺责任后可承保",
+      "decision": "exclusion"
+    },
+    {
+      "id": "UW-011",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "甲状腺结节TI-RADS 3级且无恶性征象，除外后承保；4级及以上拒保",
+      "decision": "reject"
+    },
+    {
+      "id": "UW-012",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "乳腺结节BI-RADS 1-2级，医疗险除外乳腺后可承保",
+      "decision": "exclusion"
+    },
+    {
+      "id": "UW-013",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "高危职业（5-6类），意外险加费50%-100%或拒保",
+      "decision": "extra_premium"
+    },
+    {
+      "id": "UW-014",
+      "type": "rule",
+      "domain": "underwriting",
+      "label": "年龄超过产品最高投保年龄，直接拒保",
+      "decision": "reject"
+    },
+    {
+      "id": "CL-001",
+      "type": "rule",
+      "domain": "claim",
+      "label": "等待期内因非意外伤害发生保险事故，不予赔付",
+      "decision": "reject"
+    },
+    {
+      "id": "CL-002",
+      "type": "rule",
+      "domain": "claim",
+      "label": "意外伤害事故不受等待期限制，正常进入理赔流程",
+      "decision": "approve"
+    },
+    {
+      "id": "CL-003",
+      "type": "rule",
+      "domain": "claim",
+      "label": "疾病不在合同约定的保障范围，不予赔付",
+      "decision": "reject"
+    },
+    {
+      "id": "CL-004",
+      "type": "rule",
+      "domain": "claim",
+      "label": "疾病已在合同保障范围内且满足赔付条件，赔付",
+      "decision": "approve"
+    },
+    {
+      "id": "CL-005",
+      "type": "rule",
+      "domain": "claim",
+      "label": "事故属于免责条款范围，拒赔",
+      "decision": "reject"
+    },
+    {
+      "id": "CL-006",
+      "type": "rule",
+      "domain": "claim",
+      "label": "美容整形/牙科治疗属于免责范围，拒赔",
+      "decision": "reject"
+    },
+    {
+      "id": "CL-007",
+      "type": "rule",
+      "domain": "claim",
+      "label": "医疗费用在免赔额以下，不予理赔",
+      "decision": "reject"
+    },
+    {
+      "id": "CL-008",
+      "type": "rule",
+      "domain": "claim",
+      "label": "社保/公费医疗已支付和商保补偿可计入免赔额",
+      "decision": "partial_approve"
+    },
+    {
+      "id": "CL-009",
+      "type": "rule",
+      "domain": "claim",
+      "label": "理赔材料不完整，要求补充材料（可在30日内补件）",
+      "decision": "request_more_docs"
+    },
+    {
+      "id": "CL-010",
+      "type": "rule",
+      "domain": "claim",
+      "label": "理赔材料完整，进入核定阶段（30日内核定）",
+      "decision": "approve"
+    },
+    {
+      "id": "CL-011",
+      "type": "rule",
+      "domain": "claim",
+      "label": "恶性肿瘤须经病理学检查明确诊断，符合ICD-O-3标准方可赔付",
+      "decision": "approve"
+    },
+    {
+      "id": "CL-012",
+      "type": "rule",
+      "domain": "claim",
+      "label": "甲状腺癌TNM-I期按轻度疾病赔付（≤30%基本保额）",
+      "decision": "partial_approve"
+    },
+    {
+      "id": "CL-013",
+      "type": "rule",
+      "domain": "claim",
+      "label": "出险后超过48小时报案可能影响理赔，但不当然拒赔",
+      "decision": "partial_approve"
+    },
+    {
+      "id": "EL-001",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "年龄在产品允许范围内，基础资格通过",
+      "decision": "eligible"
+    },
+    {
+      "id": "EL-002",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "年龄超出产品上限，不可投保",
+      "decision": "not_eligible"
+    },
+    {
+      "id": "EL-003",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "年龄低于产品最低投保年龄，不可投保（未成年人需监护人投保）",
+      "decision": "not_eligible"
+    },
+    {
+      "id": "EL-004",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "产品要求健康告知但被保险人健康状况良好，可进入核保",
+      "decision": "eligible"
+    },
+    {
+      "id": "EL-005",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "无健康告知产品（如E民保），任何健康状况均可投保",
+      "decision": "eligible"
+    },
+    {
+      "id": "EL-006",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "职业类别超出产品承保范围（如5-6类职业投普通意外险），不可投保或需转高危版",
+      "decision": "not_eligible"
+    },
+    {
+      "id": "EL-007",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "已有既往症且属于产品除外范围，投保可能除外相关责任",
+      "decision": "conditional_eligible"
+    },
+    {
+      "id": "EL-008",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "保证续保产品（如好医保），续保时不得因健康状况拒绝",
+      "decision": "eligible"
+    },
+    {
+      "id": "EL-009",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "非保证续保产品，续保时保险公司有权调整费率或拒绝续保",
+      "decision": "conditional_eligible"
+    },
+    {
+      "id": "EL-010",
+      "type": "rule",
+      "domain": "eligibility",
+      "label": "投保证件有效且为中国大陆居民（或持有效居留证件），可投保",
+      "decision": "eligible"
+    },
+    {
+      "id": "CI-001",
+      "type": "rule",
+      "domain": "clause",
+      "label": "条款明确列出该疾病的保障，且事故满足赔付条件 → 覆盖",
+      "decision": "covered"
+    },
+    {
+      "id": "CI-002",
+      "type": "rule",
+      "domain": "clause",
+      "label": "条款未列出该疾病 → 不覆盖",
+      "decision": "not_covered"
+    },
+    {
+      "id": "CI-003",
+      "type": "rule",
+      "domain": "clause",
+      "label": "免责条款涵盖该情形 → 不覆盖",
+      "decision": "not_covered"
+    },
+    {
+      "id": "CI-004",
+      "type": "rule",
+      "domain": "clause",
+      "label": "条款含有保证续保字样（如好医保第5.1条）→ 保证续保产品，续保条件为自动",
+      "decision": "covered"
+    },
+    {
+      "id": "CI-005",
+      "type": "rule",
+      "domain": "clause",
+      "label": "条款对等待期的描述 → 等待期天数 + 意外不受限规则",
+      "decision": "partially_covered"
+    },
+    {
+      "id": "CI-006",
+      "type": "rule",
+      "domain": "clause",
+      "label": "条款未明确覆盖门诊手术 → 门诊手术属于部分覆盖或需确认",
+      "decision": "partially_covered"
+    },
+    {
+      "id": "CI-007",
+      "type": "rule",
+      "domain": "clause",
+      "label": "轻症赔付条款明确说明赔付比例和次数限制 → 按条款执行",
+      "decision": "covered"
+    },
+    {
+      "id": "CI-008",
+      "type": "rule",
+      "domain": "clause",
+      "label": "意外伤害导致身故/医疗费用 → 适用于意外伤害相关保障条款",
+      "decision": "covered"
+    },
+    {
+      "id": "UW-001-COND-health_disclosure",
+      "type": "condition",
+      "field": "health_disclosure",
+      "operator": "equals",
+      "label": "health_disclosure equals false"
+    },
+    {
+      "id": "UW-001-COND-materiality",
+      "type": "condition",
+      "field": "materiality",
+      "operator": "equals",
+      "label": "materiality equals sufficient_to_affect_decision"
+    },
+    {
+      "id": "UW-002-COND-health_disclosure",
+      "type": "condition",
+      "field": "health_disclosure",
+      "operator": "equals",
+      "label": "health_disclosure equals false"
+    },
+    {
+      "id": "UW-002-COND-contract_age_years",
+      "type": "condition",
+      "field": "contract_age_years",
+      "operator": "gte",
+      "label": "contract_age_years gte 2"
+    },
+    {
+      "id": "UW-003-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 恶性肿瘤"
+    },
+    {
+      "id": "UW-003-COND-severity",
+      "type": "condition",
+      "field": "severity",
+      "operator": "in",
+      "label": "severity in ['重度', '中期', '晚期']"
+    },
+    {
+      "id": "UW-003-COND-tnm_stage",
+      "type": "condition",
+      "field": "tnm_stage",
+      "operator": "gte",
+      "label": "tnm_stage gte II"
+    },
+    {
+      "id": "UW-004-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 恶性肿瘤"
+    },
+    {
+      "id": "UW-004-COND-disease_subtype",
+      "type": "condition",
+      "field": "disease_subtype",
+      "operator": "equals",
+      "label": "disease_subtype equals 甲状腺癌"
+    },
+    {
+      "id": "UW-004-COND-tnm_stage",
+      "type": "condition",
+      "field": "tnm_stage",
+      "operator": "equals",
+      "label": "tnm_stage equals I"
+    },
+    {
+      "id": "UW-004-COND-years_since_surgery",
+      "type": "condition",
+      "field": "years_since_surgery",
+      "operator": "gte",
+      "label": "years_since_surgery gte 1"
+    },
+    {
+      "id": "UW-004-COND-recurrence",
+      "type": "condition",
+      "field": "recurrence",
+      "operator": "equals",
+      "label": "recurrence equals false"
+    },
+    {
+      "id": "UW-005-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 急性心肌梗塞"
+    },
+    {
+      "id": "UW-005-COND-past_history",
+      "type": "condition",
+      "field": "past_history",
+      "operator": "equals",
+      "label": "past_history equals true"
+    },
+    {
+      "id": "UW-006-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 高血压"
+    },
+    {
+      "id": "UW-006-COND-severity",
+      "type": "condition",
+      "field": "severity",
+      "operator": "equals",
+      "label": "severity equals grade_1"
+    },
+    {
+      "id": "UW-006-COND-systolic_bp",
+      "type": "condition",
+      "field": "systolic_bp",
+      "operator": "lte",
+      "label": "systolic_bp lte 160"
+    },
+    {
+      "id": "UW-006-COND-diastolic_bp",
+      "type": "condition",
+      "field": "diastolic_bp",
+      "operator": "lte",
+      "label": "diastolic_bp lte 100"
+    },
+    {
+      "id": "UW-006-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 定期寿险"
+    },
+    {
+      "id": "UW-007-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 高血压"
+    },
+    {
+      "id": "UW-007-COND-severity",
+      "type": "condition",
+      "field": "severity",
+      "operator": "in",
+      "label": "severity in ['grade_2', 'grade_3']"
+    },
+    {
+      "id": "UW-007-COND-systolic_bp",
+      "type": "condition",
+      "field": "systolic_bp",
+      "operator": "gte",
+      "label": "systolic_bp gte 160"
+    },
+    {
+      "id": "UW-007-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 百万医疗险"
+    },
+    {
+      "id": "UW-008-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 糖尿病"
+    },
+    {
+      "id": "UW-008-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "in",
+      "label": "product_type in ['百万医疗险', '重疾险']"
+    },
+    {
+      "id": "UW-009-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 糖耐量异常"
+    },
+    {
+      "id": "UW-009-COND-diagnosed",
+      "type": "condition",
+      "field": "diagnosed",
+      "operator": "equals",
+      "label": "diagnosed equals false"
+    },
+    {
+      "id": "UW-009-COND-fbg",
+      "type": "condition",
+      "field": "fbg",
+      "operator": "lt",
+      "label": "fbg lt 7.0"
+    },
+    {
+      "id": "UW-009-COND-hba1c",
+      "type": "condition",
+      "field": "hba1c",
+      "operator": "lt",
+      "label": "hba1c lt 6.5"
+    },
+    {
+      "id": "UW-009-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 定期寿险"
+    },
+    {
+      "id": "UW-010-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 甲状腺结节"
+    },
+    {
+      "id": "UW-010-COND-tirads",
+      "type": "condition",
+      "field": "tirads",
+      "operator": "in",
+      "label": "tirads in [1, 2]"
+    },
+    {
+      "id": "UW-010-COND-biopsy",
+      "type": "condition",
+      "field": "biopsy",
+      "operator": "equals",
+      "label": "biopsy equals benign"
+    },
+    {
+      "id": "UW-010-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 百万医疗险"
+    },
+    {
+      "id": "UW-011-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 甲状腺结节"
+    },
+    {
+      "id": "UW-011-COND-tirads",
+      "type": "condition",
+      "field": "tirads",
+      "operator": "in",
+      "label": "tirads in [4, 5]"
+    },
+    {
+      "id": "UW-011-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "in",
+      "label": "product_type in ['百万医疗险', '重疾险']"
+    },
+    {
+      "id": "UW-012-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 乳腺结节"
+    },
+    {
+      "id": "UW-012-COND-birads",
+      "type": "condition",
+      "field": "birads",
+      "operator": "in",
+      "label": "birads in [1, 2]"
+    },
+    {
+      "id": "UW-012-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 百万医疗险"
+    },
+    {
+      "id": "UW-013-COND-occupation_category",
+      "type": "condition",
+      "field": "occupation_category",
+      "operator": "in",
+      "label": "occupation_category in ['5', '6']"
+    },
+    {
+      "id": "UW-013-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 意外险"
+    },
+    {
+      "id": "UW-014-COND-age",
+      "type": "condition",
+      "field": "age",
+      "operator": "gt",
+      "label": "age gt product_max_age"
+    },
+    {
+      "id": "CL-001-COND-waiting_period_status",
+      "type": "condition",
+      "field": "waiting_period_status",
+      "operator": "equals",
+      "label": "waiting_period_status equals within_waiting_period"
+    },
+    {
+      "id": "CL-001-COND-cause_type",
+      "type": "condition",
+      "field": "cause_type",
+      "operator": "equals",
+      "label": "cause_type equals non_accidental"
+    },
+    {
+      "id": "CL-002-COND-waiting_period_status",
+      "type": "condition",
+      "field": "waiting_period_status",
+      "operator": "equals",
+      "label": "waiting_period_status equals within_waiting_period"
+    },
+    {
+      "id": "CL-002-COND-cause_type",
+      "type": "condition",
+      "field": "cause_type",
+      "operator": "equals",
+      "label": "cause_type equals accidental"
+    },
+    {
+      "id": "CL-003-COND-claim_type",
+      "type": "condition",
+      "field": "claim_type",
+      "operator": "equals",
+      "label": "claim_type equals disease_claim"
+    },
+    {
+      "id": "CL-003-COND-disease_covered",
+      "type": "condition",
+      "field": "disease_covered",
+      "operator": "equals",
+      "label": "disease_covered equals false"
+    },
+    {
+      "id": "CL-004-COND-claim_type",
+      "type": "condition",
+      "field": "claim_type",
+      "operator": "equals",
+      "label": "claim_type equals disease_claim"
+    },
+    {
+      "id": "CL-004-COND-disease_covered",
+      "type": "condition",
+      "field": "disease_covered",
+      "operator": "equals",
+      "label": "disease_covered equals true"
+    },
+    {
+      "id": "CL-004-COND-diagnosis_confirmed",
+      "type": "condition",
+      "field": "diagnosis_confirmed",
+      "operator": "equals",
+      "label": "diagnosis_confirmed equals true"
+    },
+    {
+      "id": "CL-005-COND-exclusion_status",
+      "type": "condition",
+      "field": "exclusion_status",
+      "operator": "equals",
+      "label": "exclusion_status equals excluded"
+    },
+    {
+      "id": "CL-005-COND-policy_exclusions",
+      "type": "condition",
+      "field": "policy_exclusions",
+      "operator": "contains",
+      "label": "policy_exclusions contains {claim_scenario}"
+    },
+    {
+      "id": "CL-006-COND-claim_scenario",
+      "type": "condition",
+      "field": "claim_scenario",
+      "operator": "in",
+      "label": "claim_scenario in ['美容整形', '牙科治疗', '视力矫正', '生育相关费用']"
+    },
+    {
+      "id": "CL-006-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 百万医疗险"
+    },
+    {
+      "id": "CL-007-COND-claimable_amount",
+      "type": "condition",
+      "field": "claimable_amount",
+      "operator": "lte",
+      "label": "claimable_amount lte policy_deductible"
+    },
+    {
+      "id": "CL-007-COND-coverage_type",
+      "type": "condition",
+      "field": "coverage_type",
+      "operator": "in",
+      "label": "coverage_type in ['general_hospitalization', 'non_critical']"
+    },
+    {
+      "id": "CL-008-COND-payment_source",
+      "type": "condition",
+      "field": "payment_source",
+      "operator": "in",
+      "label": "payment_source in ['social_insurance', 'public_medical', 'other_commercial']"
+    },
+    {
+      "id": "CL-009-COND-documents",
+      "type": "condition",
+      "field": "documents",
+      "operator": "equals",
+      "label": "documents equals incomplete"
+    },
+    {
+      "id": "CL-009-COND-missing_documents",
+      "type": "condition",
+      "field": "missing_documents",
+      "operator": "contains_any",
+      "label": "missing_documents contains_any ['diagnosis_report', 'medical_bills', 'id_copy', 'policy_original', 'claim_form']"
+    },
+    {
+      "id": "CL-010-COND-documents",
+      "type": "condition",
+      "field": "documents",
+      "operator": "equals",
+      "label": "documents equals complete"
+    },
+    {
+      "id": "CL-011-COND-claim_type",
+      "type": "condition",
+      "field": "claim_type",
+      "operator": "equals",
+      "label": "claim_type equals critical_illness"
+    },
+    {
+      "id": "CL-011-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 恶性肿瘤"
+    },
+    {
+      "id": "CL-011-COND-diagnosis_method",
+      "type": "condition",
+      "field": "diagnosis_method",
+      "operator": "equals",
+      "label": "diagnosis_method equals pathology_report"
+    },
+    {
+      "id": "CL-011-COND-icd_o_3_confirmed",
+      "type": "condition",
+      "field": "icd_o_3_confirmed",
+      "operator": "equals",
+      "label": "icd_o_3_confirmed equals true"
+    },
+    {
+      "id": "CL-012-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "equals",
+      "label": "disease equals 甲状腺癌"
+    },
+    {
+      "id": "CL-012-COND-tnm_stage",
+      "type": "condition",
+      "field": "tnm_stage",
+      "operator": "equals",
+      "label": "tnm_stage equals I"
+    },
+    {
+      "id": "CL-012-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 重疾险"
+    },
+    {
+      "id": "CL-013-COND-hours_since_accident",
+      "type": "condition",
+      "field": "hours_since_accident",
+      "operator": "gt",
+      "label": "hours_since_accident gt 48"
+    },
+    {
+      "id": "CL-013-COND-delayed_cause",
+      "type": "condition",
+      "field": "delayed_cause",
+      "operator": "equals",
+      "label": "delayed_cause equals not_justifiable"
+    },
+    {
+      "id": "EL-001-COND-age",
+      "type": "condition",
+      "field": "age",
+      "operator": "gte",
+      "label": "age gte product_min_age"
+    },
+    {
+      "id": "EL-002-COND-age",
+      "type": "condition",
+      "field": "age",
+      "operator": "gt",
+      "label": "age gt product_max_age"
+    },
+    {
+      "id": "EL-003-COND-age",
+      "type": "condition",
+      "field": "age",
+      "operator": "lt",
+      "label": "age lt product_min_age"
+    },
+    {
+      "id": "EL-004-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 百万医疗险"
+    },
+    {
+      "id": "EL-004-COND-health_check_required",
+      "type": "condition",
+      "field": "health_check_required",
+      "operator": "equals",
+      "label": "health_check_required equals true"
+    },
+    {
+      "id": "EL-004-COND-health_status",
+      "type": "condition",
+      "field": "health_status",
+      "operator": "equals",
+      "label": "health_status equals healthy"
+    },
+    {
+      "id": "EL-004-COND-has_pre_existing",
+      "type": "condition",
+      "field": "has_pre_existing",
+      "operator": "equals",
+      "label": "has_pre_existing equals false"
+    },
+    {
+      "id": "EL-005-COND-product_id",
+      "type": "condition",
+      "field": "product_id",
+      "operator": "equals",
+      "label": "product_id equals P007"
+    },
+    {
+      "id": "EL-005-COND-health_declaration_required",
+      "type": "condition",
+      "field": "health_declaration_required",
+      "operator": "equals",
+      "label": "health_declaration_required equals false"
+    },
+    {
+      "id": "EL-006-COND-product_type",
+      "type": "condition",
+      "field": "product_type",
+      "operator": "equals",
+      "label": "product_type equals 意外险"
+    },
+    {
+      "id": "EL-006-COND-occupation_category",
+      "type": "condition",
+      "field": "occupation_category",
+      "operator": "in",
+      "label": "occupation_category in ['5', '6']"
+    },
+    {
+      "id": "EL-006-COND-product_subtype",
+      "type": "condition",
+      "field": "product_subtype",
+      "operator": "equals",
+      "label": "product_subtype equals standard"
+    },
+    {
+      "id": "EL-007-COND-has_pre_existing",
+      "type": "condition",
+      "field": "has_pre_existing",
+      "operator": "equals",
+      "label": "has_pre_existing equals true"
+    },
+    {
+      "id": "EL-007-COND-pre_existing_disease",
+      "type": "condition",
+      "field": "pre_existing_disease",
+      "operator": "in",
+      "label": "pre_existing_disease in product_exclusions"
+    },
+    {
+      "id": "EL-008-COND-is_guaranteed_renewal",
+      "type": "condition",
+      "field": "is_guaranteed_renewal",
+      "operator": "equals",
+      "label": "is_guaranteed_renewal equals true"
+    },
+    {
+      "id": "EL-008-COND-policy_status",
+      "type": "condition",
+      "field": "policy_status",
+      "operator": "equals",
+      "label": "policy_status equals renewal_due"
+    },
+    {
+      "id": "EL-009-COND-is_guaranteed_renewal",
+      "type": "condition",
+      "field": "is_guaranteed_renewal",
+      "operator": "equals",
+      "label": "is_guaranteed_renewal equals false"
+    },
+    {
+      "id": "EL-009-COND-policy_status",
+      "type": "condition",
+      "field": "policy_status",
+      "operator": "equals",
+      "label": "policy_status equals renewal_due"
+    },
+    {
+      "id": "EL-010-COND-id_document",
+      "type": "condition",
+      "field": "id_document",
+      "operator": "equals",
+      "label": "id_document equals valid"
+    },
+    {
+      "id": "EL-010-COND-residency",
+      "type": "condition",
+      "field": "residency",
+      "operator": "in",
+      "label": "residency in ['chinese_mainland', 'valid_residence_permit']"
+    },
+    {
+      "id": "CI-001-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "in",
+      "label": "disease in policy_covered_diseases"
+    },
+    {
+      "id": "CI-001-COND-diagnosis_confirmed",
+      "type": "condition",
+      "field": "diagnosis_confirmed",
+      "operator": "equals",
+      "label": "diagnosis_confirmed equals true"
+    },
+    {
+      "id": "CI-002-COND-disease",
+      "type": "condition",
+      "field": "disease",
+      "operator": "not_in",
+      "label": "disease not_in policy_covered_diseases"
+    },
+    {
+      "id": "CI-003-COND-scenario",
+      "type": "condition",
+      "field": "scenario",
+      "operator": "in",
+      "label": "scenario in policy_exclusions"
+    },
+    {
+      "id": "CI-004-COND-clause_text",
+      "type": "condition",
+      "field": "clause_text",
+      "operator": "contains",
+      "label": "clause_text contains 保证续保"
+    },
+    {
+      "id": "CI-004-COND-guaranteed_years",
+      "type": "condition",
+      "field": "guaranteed_years",
+      "operator": "gt",
+      "label": "guaranteed_years gt 0"
+    },
+    {
+      "id": "CI-005-COND-clause_text",
+      "type": "condition",
+      "field": "clause_text",
+      "operator": "contains",
+      "label": "clause_text contains 等待期"
+    },
+    {
+      "id": "CI-005-COND-waiting_days",
+      "type": "condition",
+      "field": "waiting_days",
+      "operator": "lte",
+      "label": "waiting_days lte 180"
+    },
+    {
+      "id": "CI-006-COND-coverage_type",
+      "type": "condition",
+      "field": "coverage_type",
+      "operator": "equals",
+      "label": "coverage_type equals outpatient_surgery"
+    },
+    {
+      "id": "CI-006-COND-explicitly_covered",
+      "type": "condition",
+      "field": "explicitly_covered",
+      "operator": "equals",
+      "label": "explicitly_covered equals false"
+    },
+    {
+      "id": "CI-007-COND-coverage_type",
+      "type": "condition",
+      "field": "coverage_type",
+      "operator": "equals",
+      "label": "coverage_type equals mild_illness"
+    },
+    {
+      "id": "CI-007-COND-payout_rate",
+      "type": "condition",
+      "field": "payout_rate",
+      "operator": "lte",
+      "label": "payout_rate lte 0.3"
+    },
+    {
+      "id": "CI-007-COND-max_claims",
+      "type": "condition",
+      "field": "max_claims",
+      "operator": "lte",
+      "label": "max_claims lte 3"
+    },
+    {
+      "id": "CI-008-COND-cause_type",
+      "type": "condition",
+      "field": "cause_type",
+      "operator": "equals",
+      "label": "cause_type equals accidental"
+    },
+    {
+      "id": "CI-008-COND-scenario",
+      "type": "condition",
+      "field": "scenario",
+      "operator": "in",
+      "label": "scenario in ['death', 'disability', 'medical_expense']"
+    },
+    {
+      "id": "DEC-approve",
+      "type": "decision",
+      "label": "approve"
+    },
+    {
+      "id": "DEC-conditional_eligible",
+      "type": "decision",
+      "label": "conditional_eligible"
+    },
+    {
+      "id": "DEC-covered",
+      "type": "decision",
+      "label": "covered"
+    },
+    {
+      "id": "DEC-eligible",
+      "type": "decision",
+      "label": "eligible"
+    },
+    {
+      "id": "DEC-exclusion",
+      "type": "decision",
+      "label": "exclusion"
+    },
+    {
+      "id": "DEC-extra_premium",
+      "type": "decision",
+      "label": "extra_premium"
+    },
+    {
+      "id": "DEC-not_covered",
+      "type": "decision",
+      "label": "not_covered"
+    },
+    {
+      "id": "DEC-not_eligible",
+      "type": "decision",
+      "label": "not_eligible"
+    },
+    {
+      "id": "DEC-partial_approve",
+      "type": "decision",
+      "label": "partial_approve"
+    },
+    {
+      "id": "DEC-partially_covered",
+      "type": "decision",
+      "label": "partially_covered"
+    },
+    {
+      "id": "DEC-reject",
+      "type": "decision",
+      "label": "reject"
+    },
+    {
+      "id": "DEC-request_more_docs",
+      "type": "decision",
+      "label": "request_more_docs"
+    },
+    {
+      "id": "DEC-standard_accept",
+      "type": "decision",
+      "label": "standard_accept"
+    },
+    {
+      "id": "ENT-C001",
+      "type": "ontology_entity",
+      "label": "ENT-C001"
+    },
+    {
+      "id": "ENT-C002",
+      "type": "ontology_entity",
+      "label": "ENT-C002"
+    },
+    {
+      "id": "ENT-C003",
+      "type": "ontology_entity",
+      "label": "ENT-C003"
+    },
+    {
+      "id": "ENT-C004",
+      "type": "ontology_entity",
+      "label": "ENT-C004"
+    },
+    {
+      "id": "ENT-C006",
+      "type": "ontology_entity",
+      "label": "ENT-C006"
+    },
+    {
+      "id": "ENT-D001",
+      "type": "ontology_entity",
+      "label": "ENT-D001"
+    },
+    {
+      "id": "ENT-D002",
+      "type": "ontology_entity",
+      "label": "ENT-D002"
+    },
+    {
+      "id": "ENT-D003",
+      "type": "ontology_entity",
+      "label": "ENT-D003"
+    },
+    {
+      "id": "ENT-D004",
+      "type": "ontology_entity",
+      "label": "ENT-D004"
+    },
+    {
+      "id": "ENT-D005",
+      "type": "ontology_entity",
+      "label": "ENT-D005"
+    },
+    {
+      "id": "ENT-D006",
+      "type": "ontology_entity",
+      "label": "ENT-D006"
+    },
+    {
+      "id": "ENT-P001",
+      "type": "ontology_entity",
+      "label": "ENT-P001"
+    },
+    {
+      "id": "ENT-P002",
+      "type": "ontology_entity",
+      "label": "ENT-P002"
+    },
+    {
+      "id": "ENT-P003",
+      "type": "ontology_entity",
+      "label": "ENT-P003"
+    },
+    {
+      "id": "ENT-P004",
+      "type": "ontology_entity",
+      "label": "ENT-P004"
+    },
+    {
+      "id": "ENT-P004(类比)",
+      "type": "ontology_entity",
+      "label": "ENT-P004(类比)"
+    },
+    {
+      "id": "ENT-P013",
+      "type": "ontology_entity",
+      "label": "ENT-P013"
+    },
+    {
+      "id": "ENT-P014",
+      "type": "ontology_entity",
+      "label": "ENT-P014"
+    },
+    {
+      "id": "ENT-P015",
+      "type": "ontology_entity",
+      "label": "ENT-P015"
+    },
+    {
+      "id": "ENT-P016",
+      "type": "ontology_entity",
+      "label": "ENT-P016"
+    },
+    {
+      "id": "ENT-P017",
+      "type": "ontology_entity",
+      "label": "ENT-P017"
+    },
+    {
+      "id": "ENT-R001",
+      "type": "ontology_entity",
+      "label": "ENT-R001"
+    },
+    {
+      "id": "ENT-R002",
+      "type": "ontology_entity",
+      "label": "ENT-R002"
+    },
+    {
+      "id": "ENT-R003",
+      "type": "ontology_entity",
+      "label": "ENT-R003"
+    },
+    {
+      "id": "ENT-RL001",
+      "type": "ontology_entity",
+      "label": "ENT-RL001"
+    },
+    {
+      "id": "ENT-RL002",
+      "type": "ontology_entity",
+      "label": "ENT-RL002"
+    },
+    {
+      "id": "ENT-RL004",
+      "type": "ontology_entity",
+      "label": "ENT-RL004"
+    },
+    {
+      "id": "PROC-claim_lifecycle-accident_occurred",
+      "type": "process_node",
+      "label": "claim_lifecycle-accident_occurred"
+    },
+    {
+      "id": "PROC-claim_lifecycle-claim_evaluated",
+      "type": "process_node",
+      "label": "claim_lifecycle-claim_evaluated"
+    },
+    {
+      "id": "PROC-claim_lifecycle-coverage_verification",
+      "type": "process_node",
+      "label": "claim_lifecycle-coverage_verification"
+    },
+    {
+      "id": "PROC-claim_lifecycle-document_submitted",
+      "type": "process_node",
+      "label": "claim_lifecycle-document_submitted"
+    },
+    {
+      "id": "PROC-claim_lifecycle-exclusion_check",
+      "type": "process_node",
+      "label": "claim_lifecycle-exclusion_check"
+    },
+    {
+      "id": "PROC-claim_lifecycle-liability_check",
+      "type": "process_node",
+      "label": "claim_lifecycle-liability_check"
+    },
+    {
+      "id": "PROC-policy_lifecycle-application",
+      "type": "process_node",
+      "label": "policy_lifecycle-application"
+    },
+    {
+      "id": "PROC-policy_lifecycle-renewal_due",
+      "type": "process_node",
+      "label": "policy_lifecycle-renewal_due"
+    },
+    {
+      "id": "PROC-policy_lifecycle-waiting_period",
+      "type": "process_node",
+      "label": "policy_lifecycle-waiting_period"
+    },
+    {
+      "id": "PROC-underwriting_lifecycle-added_premium_eval",
+      "type": "process_node",
+      "label": "underwriting_lifecycle-added_premium_eval"
+    },
+    {
+      "id": "PROC-underwriting_lifecycle-exclusion_eval",
+      "type": "process_node",
+      "label": "underwriting_lifecycle-exclusion_eval"
+    },
+    {
+      "id": "PROC-underwriting_lifecycle-health_declaration",
+      "type": "process_node",
+      "label": "underwriting_lifecycle-health_declaration"
+    },
+    {
+      "id": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "process_node",
+      "label": "underwriting_lifecycle-risk_assessment"
+    }
+  ],
+  "edges": [
+    {
+      "from": "UW-001-COND-health_disclosure",
+      "to": "UW-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-001-COND-materiality",
+      "to": "UW-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-002-COND-health_disclosure",
+      "to": "UW-002",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-002-COND-contract_age_years",
+      "to": "UW-002",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-003-COND-disease",
+      "to": "UW-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-003-COND-severity",
+      "to": "UW-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-003-COND-tnm_stage",
+      "to": "UW-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-004-COND-disease",
+      "to": "UW-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-004-COND-disease_subtype",
+      "to": "UW-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-004-COND-tnm_stage",
+      "to": "UW-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-004-COND-years_since_surgery",
+      "to": "UW-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-004-COND-recurrence",
+      "to": "UW-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-005-COND-disease",
+      "to": "UW-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-005-COND-past_history",
+      "to": "UW-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-006-COND-disease",
+      "to": "UW-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-006-COND-severity",
+      "to": "UW-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-006-COND-systolic_bp",
+      "to": "UW-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-006-COND-diastolic_bp",
+      "to": "UW-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-006-COND-product_type",
+      "to": "UW-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-007-COND-disease",
+      "to": "UW-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-007-COND-severity",
+      "to": "UW-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-007-COND-systolic_bp",
+      "to": "UW-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-007-COND-product_type",
+      "to": "UW-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-008-COND-disease",
+      "to": "UW-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-008-COND-product_type",
+      "to": "UW-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-009-COND-disease",
+      "to": "UW-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-009-COND-diagnosed",
+      "to": "UW-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-009-COND-fbg",
+      "to": "UW-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-009-COND-hba1c",
+      "to": "UW-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-009-COND-product_type",
+      "to": "UW-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-010-COND-disease",
+      "to": "UW-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-010-COND-tirads",
+      "to": "UW-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-010-COND-biopsy",
+      "to": "UW-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-010-COND-product_type",
+      "to": "UW-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-011-COND-disease",
+      "to": "UW-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-011-COND-tirads",
+      "to": "UW-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-011-COND-product_type",
+      "to": "UW-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-012-COND-disease",
+      "to": "UW-012",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-012-COND-birads",
+      "to": "UW-012",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-012-COND-product_type",
+      "to": "UW-012",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-013-COND-occupation_category",
+      "to": "UW-013",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-013-COND-product_type",
+      "to": "UW-013",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-014-COND-age",
+      "to": "UW-014",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-001-COND-waiting_period_status",
+      "to": "CL-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-001-COND-cause_type",
+      "to": "CL-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-002-COND-waiting_period_status",
+      "to": "CL-002",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-002-COND-cause_type",
+      "to": "CL-002",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-003-COND-claim_type",
+      "to": "CL-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-003-COND-disease_covered",
+      "to": "CL-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-004-COND-claim_type",
+      "to": "CL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-004-COND-disease_covered",
+      "to": "CL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-004-COND-diagnosis_confirmed",
+      "to": "CL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-005-COND-exclusion_status",
+      "to": "CL-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-005-COND-policy_exclusions",
+      "to": "CL-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-006-COND-claim_scenario",
+      "to": "CL-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-006-COND-product_type",
+      "to": "CL-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-007-COND-claimable_amount",
+      "to": "CL-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-007-COND-coverage_type",
+      "to": "CL-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-008-COND-payment_source",
+      "to": "CL-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-009-COND-documents",
+      "to": "CL-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-009-COND-missing_documents",
+      "to": "CL-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-010-COND-documents",
+      "to": "CL-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-011-COND-claim_type",
+      "to": "CL-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-011-COND-disease",
+      "to": "CL-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-011-COND-diagnosis_method",
+      "to": "CL-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-011-COND-icd_o_3_confirmed",
+      "to": "CL-011",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-012-COND-disease",
+      "to": "CL-012",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-012-COND-tnm_stage",
+      "to": "CL-012",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-012-COND-product_type",
+      "to": "CL-012",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-013-COND-hours_since_accident",
+      "to": "CL-013",
+      "type": "condition_of"
+    },
+    {
+      "from": "CL-013-COND-delayed_cause",
+      "to": "CL-013",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-001-COND-age",
+      "to": "EL-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-001-COND-age",
+      "to": "EL-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-002-COND-age",
+      "to": "EL-002",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-003-COND-age",
+      "to": "EL-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-004-COND-product_type",
+      "to": "EL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-004-COND-health_check_required",
+      "to": "EL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-004-COND-health_status",
+      "to": "EL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-004-COND-has_pre_existing",
+      "to": "EL-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-005-COND-product_id",
+      "to": "EL-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-005-COND-health_declaration_required",
+      "to": "EL-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-006-COND-product_type",
+      "to": "EL-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-006-COND-occupation_category",
+      "to": "EL-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-006-COND-product_subtype",
+      "to": "EL-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-007-COND-has_pre_existing",
+      "to": "EL-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-007-COND-pre_existing_disease",
+      "to": "EL-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-008-COND-is_guaranteed_renewal",
+      "to": "EL-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-008-COND-policy_status",
+      "to": "EL-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-009-COND-is_guaranteed_renewal",
+      "to": "EL-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-009-COND-policy_status",
+      "to": "EL-009",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-010-COND-id_document",
+      "to": "EL-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "EL-010-COND-residency",
+      "to": "EL-010",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-001-COND-disease",
+      "to": "CI-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-001-COND-diagnosis_confirmed",
+      "to": "CI-001",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-002-COND-disease",
+      "to": "CI-002",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-003-COND-scenario",
+      "to": "CI-003",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-004-COND-clause_text",
+      "to": "CI-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-004-COND-guaranteed_years",
+      "to": "CI-004",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-005-COND-clause_text",
+      "to": "CI-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-005-COND-waiting_days",
+      "to": "CI-005",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-006-COND-coverage_type",
+      "to": "CI-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-006-COND-explicitly_covered",
+      "to": "CI-006",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-007-COND-coverage_type",
+      "to": "CI-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-007-COND-payout_rate",
+      "to": "CI-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-007-COND-max_claims",
+      "to": "CI-007",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-008-COND-cause_type",
+      "to": "CI-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "CI-008-COND-scenario",
+      "to": "CI-008",
+      "type": "condition_of"
+    },
+    {
+      "from": "UW-001",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "UW-002",
+      "to": "DEC-standard_accept",
+      "type": "decides"
+    },
+    {
+      "from": "UW-003",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "UW-004",
+      "to": "DEC-standard_accept",
+      "type": "decides"
+    },
+    {
+      "from": "UW-005",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "UW-006",
+      "to": "DEC-standard_accept",
+      "type": "decides"
+    },
+    {
+      "from": "UW-007",
+      "to": "DEC-exclusion",
+      "type": "decides"
+    },
+    {
+      "from": "UW-008",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "UW-009",
+      "to": "DEC-standard_accept",
+      "type": "decides"
+    },
+    {
+      "from": "UW-010",
+      "to": "DEC-exclusion",
+      "type": "decides"
+    },
+    {
+      "from": "UW-011",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "UW-012",
+      "to": "DEC-exclusion",
+      "type": "decides"
+    },
+    {
+      "from": "UW-013",
+      "to": "DEC-extra_premium",
+      "type": "decides"
+    },
+    {
+      "from": "UW-014",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "CL-001",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "CL-002",
+      "to": "DEC-approve",
+      "type": "decides"
+    },
+    {
+      "from": "CL-003",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "CL-004",
+      "to": "DEC-approve",
+      "type": "decides"
+    },
+    {
+      "from": "CL-005",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "CL-006",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "CL-007",
+      "to": "DEC-reject",
+      "type": "decides"
+    },
+    {
+      "from": "CL-008",
+      "to": "DEC-partial_approve",
+      "type": "decides"
+    },
+    {
+      "from": "CL-009",
+      "to": "DEC-request_more_docs",
+      "type": "decides"
+    },
+    {
+      "from": "CL-010",
+      "to": "DEC-approve",
+      "type": "decides"
+    },
+    {
+      "from": "CL-011",
+      "to": "DEC-approve",
+      "type": "decides"
+    },
+    {
+      "from": "CL-012",
+      "to": "DEC-partial_approve",
+      "type": "decides"
+    },
+    {
+      "from": "CL-013",
+      "to": "DEC-partial_approve",
+      "type": "decides"
+    },
+    {
+      "from": "EL-001",
+      "to": "DEC-eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-002",
+      "to": "DEC-not_eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-003",
+      "to": "DEC-not_eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-004",
+      "to": "DEC-eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-005",
+      "to": "DEC-eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-006",
+      "to": "DEC-not_eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-007",
+      "to": "DEC-conditional_eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-008",
+      "to": "DEC-eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-009",
+      "to": "DEC-conditional_eligible",
+      "type": "decides"
+    },
+    {
+      "from": "EL-010",
+      "to": "DEC-eligible",
+      "type": "decides"
+    },
+    {
+      "from": "CI-001",
+      "to": "DEC-covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-002",
+      "to": "DEC-not_covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-003",
+      "to": "DEC-not_covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-004",
+      "to": "DEC-covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-005",
+      "to": "DEC-partially_covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-006",
+      "to": "DEC-partially_covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-007",
+      "to": "DEC-covered",
+      "type": "decides"
+    },
+    {
+      "from": "CI-008",
+      "to": "DEC-covered",
+      "type": "decides"
+    },
+    {
+      "from": "UW-001",
+      "to": "ENT-RL004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-001",
+      "to": "ENT-R003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-002",
+      "to": "ENT-RL004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-002",
+      "to": "ENT-R003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-003",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-003",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-003",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-003",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-004",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-004",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-004",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-005",
+      "to": "ENT-D002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-005",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-005",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-005",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-006",
+      "to": "ENT-D006",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-006",
+      "to": "ENT-P016",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-006",
+      "to": "ENT-P017",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-007",
+      "to": "ENT-D006",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-007",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-007",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-007",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-008",
+      "to": "ENT-D005",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-008",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-008",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-008",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-009",
+      "to": "ENT-D005",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-009",
+      "to": "ENT-P016",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-009",
+      "to": "ENT-P017",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-010",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-010",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-010",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-011",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-011",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-011",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-011",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-012",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-012",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-012",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-013",
+      "to": "ENT-P013",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-013",
+      "to": "ENT-P014",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-013",
+      "to": "ENT-P015",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-014",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-014",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-014",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-014",
+      "to": "ENT-P004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-001",
+      "to": "ENT-RL001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-001",
+      "to": "ENT-R001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-002",
+      "to": "ENT-RL001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-002",
+      "to": "ENT-R001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-D002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-D003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-D004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-C002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-C003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-003",
+      "to": "ENT-C004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-004",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-004",
+      "to": "ENT-D002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-004",
+      "to": "ENT-D003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-004",
+      "to": "ENT-D004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-004",
+      "to": "ENT-C001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-004",
+      "to": "ENT-C002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-005",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-005",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-005",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-006",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-006",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-006",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-007",
+      "to": "ENT-RL002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-007",
+      "to": "ENT-C001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-008",
+      "to": "ENT-RL002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-008",
+      "to": "ENT-C001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-009",
+      "to": "ENT-R003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-010",
+      "to": "ENT-R003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-011",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-011",
+      "to": "ENT-R002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-012",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-012",
+      "to": "ENT-C004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-012",
+      "to": "ENT-R002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CL-013",
+      "to": "ENT-R003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-001",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-001",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-001",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-001",
+      "to": "ENT-P004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-002",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-002",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-002",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-002",
+      "to": "ENT-P004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-003",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-003",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-003",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-003",
+      "to": "ENT-P004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-004",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-004",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-004",
+      "to": "ENT-RL004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-005",
+      "to": "ENT-P004(类比)",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-006",
+      "to": "ENT-P013",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-006",
+      "to": "ENT-P014",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-007",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-007",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-007",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-007",
+      "to": "ENT-P004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-008",
+      "to": "ENT-C006",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-008",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-009",
+      "to": "ENT-C006",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-009",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-009",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "EL-010",
+      "to": "ENT-R003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-001",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-001",
+      "to": "ENT-D002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-001",
+      "to": "ENT-D003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-001",
+      "to": "ENT-D004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-001",
+      "to": "ENT-C002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-001",
+      "to": "ENT-C003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-002",
+      "to": "ENT-D001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-002",
+      "to": "ENT-D002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-002",
+      "to": "ENT-D003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-002",
+      "to": "ENT-D004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-003",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-003",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-003",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-004",
+      "to": "ENT-C006",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-004",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-005",
+      "to": "ENT-RL001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-005",
+      "to": "ENT-R001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-006",
+      "to": "ENT-C003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-006",
+      "to": "ENT-P001",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-006",
+      "to": "ENT-P002",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-007",
+      "to": "ENT-C004",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-007",
+      "to": "ENT-P003",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-008",
+      "to": "ENT-P013",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "CI-008",
+      "to": "ENT-P014",
+      "type": "depends_on_entity"
+    },
+    {
+      "from": "UW-001",
+      "to": "PROC-underwriting_lifecycle-health_declaration",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-002",
+      "to": "PROC-underwriting_lifecycle-health_declaration",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-003",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-004",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-005",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-006",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-007",
+      "to": "PROC-underwriting_lifecycle-exclusion_eval",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-008",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-009",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-010",
+      "to": "PROC-underwriting_lifecycle-exclusion_eval",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-011",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-012",
+      "to": "PROC-underwriting_lifecycle-exclusion_eval",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-013",
+      "to": "PROC-underwriting_lifecycle-added_premium_eval",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "UW-014",
+      "to": "PROC-underwriting_lifecycle-risk_assessment",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-001",
+      "to": "PROC-claim_lifecycle-coverage_verification",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-002",
+      "to": "PROC-claim_lifecycle-coverage_verification",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-003",
+      "to": "PROC-claim_lifecycle-liability_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-004",
+      "to": "PROC-claim_lifecycle-liability_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-005",
+      "to": "PROC-claim_lifecycle-exclusion_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-006",
+      "to": "PROC-claim_lifecycle-exclusion_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-007",
+      "to": "PROC-claim_lifecycle-claim_evaluated",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-008",
+      "to": "PROC-claim_lifecycle-claim_evaluated",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-009",
+      "to": "PROC-claim_lifecycle-document_submitted",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-010",
+      "to": "PROC-claim_lifecycle-document_submitted",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-011",
+      "to": "PROC-claim_lifecycle-claim_evaluated",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-012",
+      "to": "PROC-claim_lifecycle-claim_evaluated",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CL-013",
+      "to": "PROC-claim_lifecycle-accident_occurred",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-001",
+      "to": "PROC-policy_lifecycle-application",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-002",
+      "to": "PROC-policy_lifecycle-application",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-003",
+      "to": "PROC-policy_lifecycle-application",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-004",
+      "to": "PROC-underwriting_lifecycle-health_declaration",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-005",
+      "to": "PROC-underwriting_lifecycle-health_declaration",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-006",
+      "to": "PROC-policy_lifecycle-application",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-007",
+      "to": "PROC-underwriting_lifecycle-exclusion_eval",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-008",
+      "to": "PROC-policy_lifecycle-renewal_due",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-009",
+      "to": "PROC-policy_lifecycle-renewal_due",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "EL-010",
+      "to": "PROC-policy_lifecycle-application",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-001",
+      "to": "PROC-claim_lifecycle-liability_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-002",
+      "to": "PROC-claim_lifecycle-liability_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-003",
+      "to": "PROC-claim_lifecycle-exclusion_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-004",
+      "to": "PROC-policy_lifecycle-renewal_due",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-005",
+      "to": "PROC-policy_lifecycle-waiting_period",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-006",
+      "to": "PROC-claim_lifecycle-liability_check",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-007",
+      "to": "PROC-claim_lifecycle-claim_evaluated",
+      "type": "triggers_in_process"
+    },
+    {
+      "from": "CI-008",
+      "to": "PROC-claim_lifecycle-liability_check",
+      "type": "triggers_in_process"
+    }
+  ]
+}

@@ -1,0 +1,429 @@
+{
+  "meta": {
+    "domain": "eligibility",
+    "total": 10,
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "rule_id": "EL-001",
+      "domain": "eligibility",
+      "description": "年龄在产品允许范围内，基础资格通过",
+      "if": {
+        "conditions": [
+          {
+            "field": "age",
+            "operator": "gte",
+            "value": "product_min_age"
+          },
+          {
+            "field": "age",
+            "operator": "lte",
+            "value": "product_max_age"
+          }
+        ]
+      },
+      "then": {
+        "decision": "eligible",
+        "action": "proceed_to_health_declaration"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-eligibility",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003",
+          "ENT-P004"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "application",
+        "trigger_event": "E_apply"
+      }
+    },
+    {
+      "rule_id": "EL-002",
+      "domain": "eligibility",
+      "description": "年龄超出产品上限，不可投保",
+      "if": {
+        "conditions": [
+          {
+            "field": "age",
+            "operator": "gt",
+            "value": "product_max_age"
+          }
+        ]
+      },
+      "then": {
+        "decision": "not_eligible",
+        "action": "age_exceeds_product_limit"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-eligibility",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003",
+          "ENT-P004"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "application",
+        "trigger_event": "E_decline"
+      }
+    },
+    {
+      "rule_id": "EL-003",
+      "domain": "eligibility",
+      "description": "年龄低于产品最低投保年龄，不可投保（未成年人需监护人投保）",
+      "if": {
+        "conditions": [
+          {
+            "field": "age",
+            "operator": "lt",
+            "value": "product_min_age"
+          }
+        ]
+      },
+      "then": {
+        "decision": "not_eligible",
+        "action": "below_minimum_age"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-eligibility",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003",
+          "ENT-P004"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "application",
+        "trigger_event": "E_decline"
+      }
+    },
+    {
+      "rule_id": "EL-004",
+      "domain": "eligibility",
+      "description": "产品要求健康告知但被保险人健康状况良好，可进入核保",
+      "if": {
+        "conditions": [
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "百万医疗险"
+          },
+          {
+            "field": "health_check_required",
+            "operator": "equals",
+            "value": "true"
+          },
+          {
+            "field": "health_status",
+            "operator": "equals",
+            "value": "healthy"
+          },
+          {
+            "field": "has_pre_existing",
+            "operator": "equals",
+            "value": "false"
+          }
+        ]
+      },
+      "then": {
+        "decision": "eligible",
+        "action": "standard_underwriting_path"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-eligibility",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-RL004"
+        ],
+        "relations": [
+          "requires"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "health_declaration",
+        "trigger_event": "E_declare_health"
+      }
+    },
+    {
+      "rule_id": "EL-005",
+      "domain": "eligibility",
+      "description": "无健康告知产品（如E民保），任何健康状况均可投保",
+      "if": {
+        "conditions": [
+          {
+            "field": "product_id",
+            "operator": "equals",
+            "value": "P007"
+          },
+          {
+            "field": "health_declaration_required",
+            "operator": "equals",
+            "value": "false"
+          }
+        ]
+      },
+      "then": {
+        "decision": "eligible",
+        "action": "no_health_check_required"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-P007",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P004(类比)"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "health_declaration",
+        "trigger_event": "E_declare_health"
+      }
+    },
+    {
+      "rule_id": "EL-006",
+      "domain": "eligibility",
+      "description": "职业类别超出产品承保范围（如5-6类职业投普通意外险），不可投保或需转高危版",
+      "if": {
+        "conditions": [
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "意外险"
+          },
+          {
+            "field": "occupation_category",
+            "operator": "in",
+            "value": [
+              "5",
+              "6"
+            ]
+          },
+          {
+            "field": "product_subtype",
+            "operator": "equals",
+            "value": "standard"
+          }
+        ]
+      },
+      "then": {
+        "decision": "not_eligible",
+        "action": "redirect_to_high_risk_version_or_decline"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "REG019-意外伤害保险",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P013",
+          "ENT-P014"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "application",
+        "trigger_event": "E_decline"
+      }
+    },
+    {
+      "rule_id": "EL-007",
+      "domain": "eligibility",
+      "description": "已有既往症且属于产品除外范围，投保可能除外相关责任",
+      "if": {
+        "conditions": [
+          {
+            "field": "has_pre_existing",
+            "operator": "equals",
+            "value": "true"
+          },
+          {
+            "field": "pre_existing_disease",
+            "operator": "in",
+            "value": "product_exclusions"
+          }
+        ]
+      },
+      "then": {
+        "decision": "conditional_eligible",
+        "action": "offer_exclusion_underwriting"
+      },
+      "confidence": "MEDIUM",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-exclusions",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003",
+          "ENT-P004"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "exclusion_eval",
+        "trigger_event": "E_evaluate_exclusion"
+      }
+    },
+    {
+      "rule_id": "EL-008",
+      "domain": "eligibility",
+      "description": "保证续保产品（如好医保），续保时不得因健康状况拒绝",
+      "if": {
+        "conditions": [
+          {
+            "field": "is_guaranteed_renewal",
+            "operator": "equals",
+            "value": "true"
+          },
+          {
+            "field": "policy_status",
+            "operator": "equals",
+            "value": "renewal_due"
+          }
+        ]
+      },
+      "then": {
+        "decision": "eligible",
+        "action": "auto_renewal_guaranteed"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG001-第十七条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-C006",
+          "ENT-P002"
+        ],
+        "relations": [
+          "contains",
+          "defined_by"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "renewal_due",
+        "trigger_event": "E_renewal_auto"
+      }
+    },
+    {
+      "rule_id": "EL-009",
+      "domain": "eligibility",
+      "description": "非保证续保产品，续保时保险公司有权调整费率或拒绝续保",
+      "if": {
+        "conditions": [
+          {
+            "field": "is_guaranteed_renewal",
+            "operator": "equals",
+            "value": "false"
+          },
+          {
+            "field": "policy_status",
+            "operator": "equals",
+            "value": "renewal_due"
+          }
+        ]
+      },
+      "then": {
+        "decision": "conditional_eligible",
+        "action": "insurer_may_adjust_premium_or_decline"
+      },
+      "confidence": "MEDIUM",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-{product}.is_guaranteed_renewal",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-C006",
+          "ENT-P001",
+          "ENT-P003"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "renewal_due",
+        "trigger_event": "E_renewal_assess"
+      }
+    },
+    {
+      "rule_id": "EL-010",
+      "domain": "eligibility",
+      "description": "投保证件有效且为中国大陆居民（或持有效居留证件），可投保",
+      "if": {
+        "conditions": [
+          {
+            "field": "id_document",
+            "operator": "equals",
+            "value": "valid"
+          },
+          {
+            "field": "residency",
+            "operator": "in",
+            "value": [
+              "chinese_mainland",
+              "valid_residence_permit"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "eligible",
+        "action": "identity_verified"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG003-投保人定义",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-R003"
+        ],
+        "relations": [
+          "regulates"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "application",
+        "trigger_event": "E_apply"
+      }
+    }
+  ]
+}

@@ -1,0 +1,423 @@
+{
+  "process": "claim_lifecycle",
+  "version": "1.0",
+  "description": "保险理赔全流程状态机 — 从出险报案到理赔款到账",
+  "initial_state": "idle",
+  "terminal_states": [
+    "claim_paid",
+    "claim_rejected",
+    "claim_withdrawn"
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "label": "未出险",
+      "description": "保单有效期内，未发生保险事故"
+    },
+    {
+      "id": "accident_occurred",
+      "label": "出险",
+      "description": "保险事故发生"
+    },
+    {
+      "id": "claim_reported",
+      "label": "已报案",
+      "description": "投保人/被保险人在规定时间内向保险公司报案"
+    },
+    {
+      "id": "coverage_verification",
+      "label": "保障期核验",
+      "description": "核验事故是否在保障期间内"
+    },
+    {
+      "id": "liability_check",
+      "label": "责任认定",
+      "description": "认定事故是否属于保险责任范围"
+    },
+    {
+      "id": "exclusion_check",
+      "label": "免责核查",
+      "description": "核查事故是否属于免责条款范围"
+    },
+    {
+      "id": "document_collection",
+      "label": "材料收集",
+      "description": "被保险人准备并提交理赔材料"
+    },
+    {
+      "id": "document_submitted",
+      "label": "材料已提交",
+      "description": "理赔材料已提交至保险公司"
+    },
+    {
+      "id": "document_review",
+      "label": "材料审核中",
+      "description": "保险公司审核理赔材料完整性与真实性"
+    },
+    {
+      "id": "need_supplement",
+      "label": "需补充材料",
+      "description": "材料不完整，需被保险人补充"
+    },
+    {
+      "id": "claim_evaluated",
+      "label": "理赔核定",
+      "description": "保险公司核定赔付金额"
+    },
+    {
+      "id": "claim_approved",
+      "label": "同意赔付",
+      "description": "审核通过，同意赔付"
+    },
+    {
+      "id": "claim_rejected",
+      "label": "拒赔",
+      "description": "审核不通过，拒绝赔付"
+    },
+    {
+      "id": "claim_paid",
+      "label": "理赔款到账",
+      "description": "理赔款项支付到被保险人账户"
+    },
+    {
+      "id": "claim_withdrawn",
+      "label": "撤回理赔",
+      "description": "被保险人主动撤回理赔申请"
+    },
+    {
+      "id": "appeal",
+      "label": "申诉中",
+      "description": "被保险人对拒赔结果提出申诉"
+    }
+  ],
+  "events": [
+    {
+      "id": "E_accident",
+      "label": "保险事故发生",
+      "description": "被保险人发生保险合同约定的保险事故"
+    },
+    {
+      "id": "E_report",
+      "label": "报案",
+      "description": "投保人/被保险人向保险公司报案（通常48小时内）"
+    },
+    {
+      "id": "E_timeout_report",
+      "label": "超时报案",
+      "description": "超过规定时间报案"
+    },
+    {
+      "id": "E_in_coverage",
+      "label": "在保障期内",
+      "description": "事故发生在保险期间内"
+    },
+    {
+      "id": "E_out_coverage",
+      "label": "不在保障期",
+      "description": "事故不在保险期间内或等待期内"
+    },
+    {
+      "id": "E_in_liability",
+      "label": "属于保险责任",
+      "description": "事故属于保险合同约定的保险责任"
+    },
+    {
+      "id": "E_not_liability",
+      "label": "不属于保险责任",
+      "description": "事故不属于保险责任范围"
+    },
+    {
+      "id": "E_excluded",
+      "label": "属于免责条款",
+      "description": "事故属于免责条款范围"
+    },
+    {
+      "id": "E_not_excluded",
+      "label": "不属于免责条款",
+      "description": "事故不属于免责条款范围"
+    },
+    {
+      "id": "E_submit_docs",
+      "label": "提交理赔材料",
+      "description": "被保险人提交理赔所需材料"
+    },
+    {
+      "id": "E_docs_complete",
+      "label": "材料完整",
+      "description": "理赔材料齐全、合规"
+    },
+    {
+      "id": "E_docs_incomplete",
+      "label": "材料不完整",
+      "description": "理赔材料缺失或不合规"
+    },
+    {
+      "id": "E_supplement_done",
+      "label": "补件完成",
+      "description": "被保险人补充提交了所需材料"
+    },
+    {
+      "id": "E_evaluate",
+      "label": "核定赔付",
+      "description": "保险公司核定赔付金额（30日内）"
+    },
+    {
+      "id": "E_approve",
+      "label": "审核通过",
+      "description": "理赔审核通过"
+    },
+    {
+      "id": "E_reject",
+      "label": "拒赔决定",
+      "description": "理赔审核不通过"
+    },
+    {
+      "id": "E_pay",
+      "label": "支付赔款",
+      "description": "保险公司支付理赔款（协议达成后10日内）"
+    },
+    {
+      "id": "E_withdraw",
+      "label": "撤回申请",
+      "description": "被保险人主动撤回理赔申请"
+    },
+    {
+      "id": "E_appeal",
+      "label": "提出申诉",
+      "description": "被保险人对拒赔结果提出申诉"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "idle",
+      "event": "E_accident",
+      "to": "accident_occurred"
+    },
+    {
+      "from": "accident_occurred",
+      "event": "E_report",
+      "to": "claim_reported"
+    },
+    {
+      "from": "accident_occurred",
+      "event": "E_timeout_report",
+      "to": "claim_reported",
+      "note": "超时报案可能影响赔付"
+    },
+    {
+      "from": "claim_reported",
+      "event": "E_in_coverage",
+      "to": "coverage_verification"
+    },
+    {
+      "from": "coverage_verification",
+      "event": "E_in_liability",
+      "to": "liability_check"
+    },
+    {
+      "from": "coverage_verification",
+      "event": "E_not_liability",
+      "to": "claim_rejected"
+    },
+    {
+      "from": "liability_check",
+      "event": "E_not_excluded",
+      "to": "document_collection"
+    },
+    {
+      "from": "liability_check",
+      "event": "E_excluded",
+      "to": "claim_rejected"
+    },
+    {
+      "from": "document_collection",
+      "event": "E_submit_docs",
+      "to": "document_submitted"
+    },
+    {
+      "from": "document_submitted",
+      "event": "E_docs_complete",
+      "to": "document_review"
+    },
+    {
+      "from": "document_submitted",
+      "event": "E_docs_incomplete",
+      "to": "need_supplement"
+    },
+    {
+      "from": "need_supplement",
+      "event": "E_supplement_done",
+      "to": "document_review"
+    },
+    {
+      "from": "need_supplement",
+      "event": "E_withdraw",
+      "to": "claim_withdrawn"
+    },
+    {
+      "from": "document_review",
+      "event": "E_evaluate",
+      "to": "claim_evaluated"
+    },
+    {
+      "from": "claim_evaluated",
+      "event": "E_approve",
+      "to": "claim_approved"
+    },
+    {
+      "from": "claim_evaluated",
+      "event": "E_reject",
+      "to": "claim_rejected"
+    },
+    {
+      "from": "claim_approved",
+      "event": "E_pay",
+      "to": "claim_paid"
+    },
+    {
+      "from": "claim_rejected",
+      "event": "E_appeal",
+      "to": "appeal"
+    },
+    {
+      "from": "appeal",
+      "event": "E_approve",
+      "to": "claim_approved"
+    },
+    {
+      "from": "appeal",
+      "event": "E_reject",
+      "to": "claim_rejected"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D_coverage",
+      "node": "coverage_verification",
+      "question": "事故是否在保障期间内？",
+      "yes": "liability_check",
+      "no": "claim_rejected",
+      "rule_based": true,
+      "evidence_refs": [
+        "REG001-第二十三条"
+      ],
+      "evidence_type": "regulation"
+    },
+    {
+      "id": "D_liability",
+      "node": "liability_check",
+      "question": "事故是否属于保险责任范围？",
+      "yes": "exclusion_check",
+      "no": "claim_rejected",
+      "rule_based": true,
+      "evidence_refs": [
+        "DOC001-C002",
+        "DOC001-C003",
+        "DOC002-C002"
+      ],
+      "evidence_type": "policy_clause"
+    },
+    {
+      "id": "D_exclusion",
+      "node": "exclusion_check",
+      "question": "事故是否属于免责条款？",
+      "yes": "claim_rejected",
+      "no": "document_collection",
+      "rule_based": true,
+      "evidence_refs": [
+        "DOC001-C007",
+        "DOC002-C006"
+      ],
+      "evidence_type": "policy_clause"
+    },
+    {
+      "id": "D_docs_complete",
+      "node": "document_submitted",
+      "question": "理赔材料是否齐全？",
+      "yes": "document_review",
+      "no": "need_supplement",
+      "rule_based": false,
+      "tool_driven": true,
+      "evidence_refs": [
+        "REG012",
+        "REG003-第二十三条"
+      ],
+      "evidence_type": "regulation"
+    },
+    {
+      "id": "D_evaluate",
+      "node": "claim_evaluated",
+      "question": "是否符合赔付条件且金额合理？",
+      "yes": "claim_approved",
+      "no": "claim_rejected",
+      "rule_based": true,
+      "evidence_refs": [
+        "REG001-第三十条",
+        "PRODUCT_COVERAGE"
+      ],
+      "evidence_type": "regulation+product"
+    }
+  ],
+  "evidence_mapping": {
+    "REG001": {
+      "title": "健康保险管理办法",
+      "role": "等待期限制(≤180天)、理赔核定时限(30日)"
+    },
+    "REG003": {
+      "title": "保险法",
+      "role": "如实告知义务、理赔时效、合同解除权"
+    },
+    "REG012": {
+      "title": "关于进一步规范保险理赔服务有关事项的通知",
+      "role": "理赔材料标准化、理赔时效要求"
+    },
+    "PRODUCT_POLICY": {
+      "role": "具体保障范围、免责条款、免赔额、保额上限"
+    },
+    "knowledge_pack_products": {
+      "role": "产品catalog中的coverage/exclusions/deductible字段"
+    }
+  },
+  "ontology_mapping": {
+    "product_entities": [
+      "ENT-P001",
+      "ENT-P002",
+      "ENT-P003",
+      "ENT-P004"
+    ],
+    "coverage_entities": [
+      "ENT-C001",
+      "ENT-C002",
+      "ENT-C003",
+      "ENT-C004"
+    ],
+    "disease_entities": [
+      "ENT-D001",
+      "ENT-D002",
+      "ENT-D003",
+      "ENT-D004"
+    ],
+    "rule_entities": [
+      "ENT-RL001",
+      "ENT-RL002",
+      "ENT-RL004"
+    ],
+    "regulation_entities": [
+      "ENT-R001",
+      "ENT-R003"
+    ],
+    "relations": [
+      "COVERS",
+      "CONTAINS",
+      "REGULATED_BY",
+      "EXCLUDES",
+      "DEFINES"
+    ]
+  },
+  "coverage_gaps": [
+    "申诉-仲裁-诉讼子流程未建模（appeal后缺少法院/仲裁路径）",
+    "第三方责任追偿子流程未建模（如车险代位求偿）",
+    "小额快赔通道未区分（部分产品有快速理赔）",
+    "异地就医理赔特殊流程未建模"
+  ]
+}

@@ -1,0 +1,378 @@
+{
+  "process": "underwriting_lifecycle",
+  "version": "1.0",
+  "description": "保险核保全流程状态机 — 从投保申请到承保决定",
+  "initial_state": "idle",
+  "terminal_states": [
+    "standard_accepted",
+    "added_premium_accepted",
+    "exclusion_accepted",
+    "declined",
+    "application_withdrawn"
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "label": "未投保",
+      "description": "潜在投保人尚未提交投保申请"
+    },
+    {
+      "id": "application_submitted",
+      "label": "投保申请已提交",
+      "description": "投保人提交投保申请"
+    },
+    {
+      "id": "health_declaration",
+      "label": "健康告知",
+      "description": "投保人进行健康告知"
+    },
+    {
+      "id": "honesty_check",
+      "label": "如实告知核查",
+      "description": "核保人/系统核查健康告知的真实性"
+    },
+    {
+      "id": "risk_assessment",
+      "label": "风险评估",
+      "description": "评估被保险人的风险等级"
+    },
+    {
+      "id": "standard_risk",
+      "label": "标准体",
+      "description": "风险等级为标准/优选"
+    },
+    {
+      "id": "substandard_risk",
+      "label": "次标准体",
+      "description": "风险等级高于标准"
+    },
+    {
+      "id": "standard_accepted",
+      "label": "标准承保",
+      "description": "按标准费率和条款承保"
+    },
+    {
+      "id": "added_premium_eval",
+      "label": "加费评估",
+      "description": "评估是否需要加费承保"
+    },
+    {
+      "id": "added_premium_accepted",
+      "label": "加费承保",
+      "description": "投保人同意加费，按加费后费率承保"
+    },
+    {
+      "id": "exclusion_eval",
+      "label": "除外评估",
+      "description": "评估是否需要除外责任承保"
+    },
+    {
+      "id": "exclusion_accepted",
+      "label": "除外承保",
+      "description": "投保人同意除外责任，按除外条款承保"
+    },
+    {
+      "id": "declined",
+      "label": "拒保",
+      "description": "风险过高，拒绝承保"
+    },
+    {
+      "id": "application_withdrawn",
+      "label": "撤回申请",
+      "description": "投保人主动撤回投保申请"
+    },
+    {
+      "id": "manual_review",
+      "label": "人工核保",
+      "description": "复杂案件转人工核保"
+    }
+  ],
+  "events": [
+    {
+      "id": "E_apply",
+      "label": "提交投保申请",
+      "description": "投保人提交投保申请，填写基本信息"
+    },
+    {
+      "id": "E_declare_health",
+      "label": "健康告知",
+      "description": "投保人如实告知健康状况"
+    },
+    {
+      "id": "E_honesty_pass",
+      "label": "如实告知通过",
+      "description": "健康告知经核查真实"
+    },
+    {
+      "id": "E_honesty_fail",
+      "label": "如实告知不实",
+      "description": "健康告知存在不实信息"
+    },
+    {
+      "id": "E_assess_risk",
+      "label": "风险评估",
+      "description": "评估被保险人风险等级"
+    },
+    {
+      "id": "E_standard",
+      "label": "评估为标准体",
+      "description": "风险等级在标准接受范围内"
+    },
+    {
+      "id": "E_substandard",
+      "label": "评估为次标准体",
+      "description": "风险等级超出标准范围"
+    },
+    {
+      "id": "E_accept_standard",
+      "label": "接受标准承保",
+      "description": "同意以标准条件承保"
+    },
+    {
+      "id": "E_evaluate_premium",
+      "label": "加费评估",
+      "description": "评估加费幅度和条件"
+    },
+    {
+      "id": "E_accept_premium",
+      "label": "接受加费",
+      "description": "投保人接受加费条件"
+    },
+    {
+      "id": "E_reject_premium",
+      "label": "拒绝加费",
+      "description": "投保人拒绝加费条件"
+    },
+    {
+      "id": "E_evaluate_exclusion",
+      "label": "除外评估",
+      "description": "评估除外责任范围和条件"
+    },
+    {
+      "id": "E_accept_exclusion",
+      "label": "接受除外",
+      "description": "投保人接受除外责任条件"
+    },
+    {
+      "id": "E_reject_exclusion",
+      "label": "拒绝除外",
+      "description": "投保人拒绝除外责任条件"
+    },
+    {
+      "id": "E_decline",
+      "label": "拒保",
+      "description": "保险公司决定拒保"
+    },
+    {
+      "id": "E_withdraw",
+      "label": "撤回投保",
+      "description": "投保人主动撤回申请"
+    },
+    {
+      "id": "E_manual_review",
+      "label": "转人工核保",
+      "description": "复杂案件转人工审核"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "idle",
+      "event": "E_apply",
+      "to": "application_submitted"
+    },
+    {
+      "from": "application_submitted",
+      "event": "E_declare_health",
+      "to": "health_declaration"
+    },
+    {
+      "from": "health_declaration",
+      "event": "E_honesty_pass",
+      "to": "honesty_check"
+    },
+    {
+      "from": "health_declaration",
+      "event": "E_honesty_fail",
+      "to": "declined",
+      "note": "投保人故意不实告知，保险公司有权解除合同"
+    },
+    {
+      "from": "honesty_check",
+      "event": "E_assess_risk",
+      "to": "risk_assessment"
+    },
+    {
+      "from": "risk_assessment",
+      "event": "E_standard",
+      "to": "standard_risk"
+    },
+    {
+      "from": "risk_assessment",
+      "event": "E_substandard",
+      "to": "substandard_risk"
+    },
+    {
+      "from": "risk_assessment",
+      "event": "E_manual_review",
+      "to": "manual_review"
+    },
+    {
+      "from": "standard_risk",
+      "event": "E_accept_standard",
+      "to": "standard_accepted"
+    },
+    {
+      "from": "substandard_risk",
+      "event": "E_evaluate_premium",
+      "to": "added_premium_eval"
+    },
+    {
+      "from": "added_premium_eval",
+      "event": "E_accept_premium",
+      "to": "added_premium_accepted"
+    },
+    {
+      "from": "added_premium_eval",
+      "event": "E_reject_premium",
+      "to": "exclusion_eval"
+    },
+    {
+      "from": "added_premium_eval",
+      "event": "E_decline",
+      "to": "declined"
+    },
+    {
+      "from": "exclusion_eval",
+      "event": "E_accept_exclusion",
+      "to": "exclusion_accepted"
+    },
+    {
+      "from": "exclusion_eval",
+      "event": "E_reject_exclusion",
+      "to": "declined"
+    },
+    {
+      "from": "manual_review",
+      "event": "E_standard",
+      "to": "standard_risk"
+    },
+    {
+      "from": "manual_review",
+      "event": "E_substandard",
+      "to": "substandard_risk"
+    },
+    {
+      "from": "manual_review",
+      "event": "E_decline",
+      "to": "declined"
+    },
+    {
+      "from": "risk_assessment",
+      "event": "E_withdraw",
+      "to": "application_withdrawn"
+    },
+    {
+      "from": "substandard_risk",
+      "event": "E_withdraw",
+      "to": "application_withdrawn"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D_honesty",
+      "node": "health_declaration",
+      "question": "健康告知是否真实？",
+      "yes": "honesty_check→risk_assessment",
+      "no": "declined",
+      "rule_based": true,
+      "evidence_refs": [
+        "REG003-第十六条",
+        "DOC006-C001"
+      ],
+      "evidence_type": "regulation",
+      "note": "投保人故意或因重大过失未如实告知，保险人有权解除合同。合同成立超2年不得解除"
+    },
+    {
+      "id": "D_risk",
+      "node": "risk_assessment",
+      "question": "被保险人属于标准体还是次标准体？",
+      "yes": "standard_risk→standard_accepted",
+      "no": "substandard_risk→加费/除外/拒保",
+      "rule_based": true,
+      "tool_driven": true,
+      "evidence_refs": [
+        "PRODUCT_ELIGIBILITY"
+      ],
+      "evidence_type": "product",
+      "note": "依赖产品catalog中的eligibility字段：min_age/max_age/health_check_required"
+    },
+    {
+      "id": "D_premium",
+      "node": "added_premium_eval",
+      "question": "投保人是否接受加费条件？",
+      "yes": "added_premium_accepted",
+      "no": "exclusion_eval 或 declined",
+      "rule_based": false,
+      "evidence_refs": [
+        "REG001-第二十一条"
+      ],
+      "evidence_type": "regulation"
+    },
+    {
+      "id": "D_exclusion",
+      "node": "exclusion_eval",
+      "question": "投保人是否接受除外责任条件？",
+      "yes": "exclusion_accepted",
+      "no": "declined",
+      "rule_based": false
+    }
+  ],
+  "evidence_mapping": {
+    "REG003-16": {
+      "title": "保险法第十六条",
+      "role": "如实告知义务的法律依据"
+    },
+    "REG001-21": {
+      "title": "健康保险管理办法第二十一条",
+      "role": "费率确定原则"
+    },
+    "PRODUCT_ELIGIBILITY": {
+      "role": "产品catalog中的投保年龄限制/健康要求/职业限制",
+      "source": "knowledge_pack/products/catalog.json"
+    },
+    "PRODUCT_EXCLUSIONS": {
+      "role": "产品catalog中的除外责任列表"
+    }
+  },
+  "ontology_mapping": {
+    "product_entities": [
+      "ENT-P001",
+      "ENT-P002",
+      "ENT-P003",
+      "ENT-P004"
+    ],
+    "coverage_entities": [
+      "ENT-C001",
+      "ENT-C002"
+    ],
+    "rule_entities": [
+      "ENT-RL001(等待期)",
+      "ENT-RL004(如实告知)"
+    ],
+    "regulation_entities": [
+      "ENT-R001",
+      "ENT-R003"
+    ],
+    "relations": [
+      "REGULATED_BY",
+      "DEFINES"
+    ]
+  },
+  "coverage_gaps": [
+    "健康告知问题库未建模（每个产品有特定的健康告知问题列表）",
+    "智能核保规则引擎未实现（结节/高血压等特定条件的承保规则）",
+    "职业类别风险评估未建模（意外险通常有职业限制）",
+    "财务核保未建模（高保额需要财务证明）",
+    "体检核保路径未区分（部分产品要求体检）"
+  ]
+}

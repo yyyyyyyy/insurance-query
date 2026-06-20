@@ -1,0 +1,463 @@
+{
+  "process": "policy_lifecycle",
+  "version": "1.0",
+  "description": "保单全生命周期状态机 — 从投保到终止",
+  "initial_state": "idle",
+  "terminal_states": [
+    "terminated",
+    "lapsed",
+    "surrendered",
+    "fully_matured"
+  ],
+  "states": [
+    {
+      "id": "idle",
+      "label": "未投保",
+      "description": "潜在投保人尚未投保"
+    },
+    {
+      "id": "application",
+      "label": "投保中",
+      "description": "投保申请已提交，进入核保流程"
+    },
+    {
+      "id": "underwriting",
+      "label": "核保中",
+      "description": "保险公司正在核保",
+      "sub_process": "underwriting_lifecycle"
+    },
+    {
+      "id": "policy_issued",
+      "label": "保单签发",
+      "description": "核保通过，保单已签发"
+    },
+    {
+      "id": "cooling_off",
+      "label": "犹豫期",
+      "description": "投保人签收保单后的犹豫期内",
+      "rule": "≥15日",
+      "evidence": "REG001-第十五条"
+    },
+    {
+      "id": "waiting_period",
+      "label": "等待期",
+      "description": "保单生效后的等待期内",
+      "rule": "≤180日",
+      "evidence": "REG001-第二十三条"
+    },
+    {
+      "id": "active",
+      "label": "保障中",
+      "description": "保单正常有效，保障责任生效"
+    },
+    {
+      "id": "premium_due",
+      "label": "保费应缴",
+      "description": "续期保费到期"
+    },
+    {
+      "id": "grace_period",
+      "label": "宽限期",
+      "description": "保费逾期后的宽限期内",
+      "rule": "通常60日"
+    },
+    {
+      "id": "renewal_due",
+      "label": "续保评估",
+      "description": "保险期间届满，进行续保评估"
+    },
+    {
+      "id": "renewed",
+      "label": "已续保",
+      "description": "续保成功，进入下一保险期间"
+    },
+    {
+      "id": "lapsed",
+      "label": "失效",
+      "description": "宽限期后仍未缴费，保单失效"
+    },
+    {
+      "id": "reinstatement",
+      "label": "复效中",
+      "description": "投保人申请恢复失效保单"
+    },
+    {
+      "id": "surrendered",
+      "label": "退保",
+      "description": "投保人主动退保"
+    },
+    {
+      "id": "terminated",
+      "label": "终止",
+      "description": "保单终止（理赔后/期满/解除）"
+    },
+    {
+      "id": "fully_matured",
+      "label": "满期",
+      "description": "保险期间届满，合同终止"
+    },
+    {
+      "id": "policy_loan",
+      "label": "保单贷款",
+      "description": "投保人以保单现金价值为抵押申请贷款（适用长期险）"
+    }
+  ],
+  "events": [
+    {
+      "id": "E_apply",
+      "label": "提交投保",
+      "description": "投保人提交投保申请"
+    },
+    {
+      "id": "E_approve",
+      "label": "核保通过",
+      "description": "核保审核通过",
+      "sub": "underwriting_lifecycle"
+    },
+    {
+      "id": "E_decline",
+      "label": "核保拒保",
+      "description": "核保不通过",
+      "sub": "underwriting_lifecycle"
+    },
+    {
+      "id": "E_issue_policy",
+      "label": "签发保单",
+      "description": "保险公司签发正式保单"
+    },
+    {
+      "id": "E_sign_receipt",
+      "label": "签收保单",
+      "description": "投保人签收保单，犹豫期开始"
+    },
+    {
+      "id": "E_cooling_off_over",
+      "label": "犹豫期满",
+      "description": "犹豫期结束，未退保"
+    },
+    {
+      "id": "E_cancel_cooling",
+      "label": "犹豫期退保",
+      "description": "投保人在犹豫期内退保（全额退费）"
+    },
+    {
+      "id": "E_waiting_start",
+      "label": "等待期开始",
+      "description": "等待期计算开始"
+    },
+    {
+      "id": "E_waiting_over",
+      "label": "等待期结束",
+      "description": "等待期满，保障全面生效"
+    },
+    {
+      "id": "E_premium_due",
+      "label": "保费到期",
+      "description": "续期保费应缴日到达"
+    },
+    {
+      "id": "E_pay_premium",
+      "label": "缴纳保费",
+      "description": "投保人缴纳续期保费"
+    },
+    {
+      "id": "E_premium_overdue",
+      "label": "保费逾期",
+      "description": "投保人未按时缴纳保费"
+    },
+    {
+      "id": "E_grace_over",
+      "label": "宽限期结束",
+      "description": "宽限期结束仍未缴费"
+    },
+    {
+      "id": "E_renewal_assess",
+      "label": "续保评估",
+      "description": "期满进入续保评估"
+    },
+    {
+      "id": "E_renewal_approved",
+      "label": "同意续保",
+      "description": "符合续保条件，同意续保"
+    },
+    {
+      "id": "E_renewal_denied",
+      "label": "拒绝续保",
+      "description": "不符合续保条件（非保证续保产品）"
+    },
+    {
+      "id": "E_renewal_auto",
+      "label": "自动续保",
+      "description": "保证续保产品自动续保"
+    },
+    {
+      "id": "E_terminate",
+      "label": "终止保单",
+      "description": "因理赔/期满/解除等原因终止"
+    },
+    {
+      "id": "E_surrender",
+      "label": "退保",
+      "description": "投保人主动申请退保"
+    },
+    {
+      "id": "E_reinstate",
+      "label": "申请复效",
+      "description": "投保人申请恢复失效保单"
+    },
+    {
+      "id": "E_mature",
+      "label": "期满",
+      "description": "保险期间届满"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "idle",
+      "event": "E_apply",
+      "to": "application"
+    },
+    {
+      "from": "application",
+      "event": "E_approve",
+      "to": "underwriting"
+    },
+    {
+      "from": "application",
+      "event": "E_decline",
+      "to": "terminated",
+      "note": "核保不通过→终止"
+    },
+    {
+      "from": "underwriting",
+      "event": "E_issue_policy",
+      "to": "policy_issued"
+    },
+    {
+      "from": "policy_issued",
+      "event": "E_sign_receipt",
+      "to": "cooling_off"
+    },
+    {
+      "from": "cooling_off",
+      "event": "E_cooling_off_over",
+      "to": "waiting_period"
+    },
+    {
+      "from": "cooling_off",
+      "event": "E_cancel_cooling",
+      "to": "surrendered"
+    },
+    {
+      "from": "waiting_period",
+      "event": "E_waiting_over",
+      "to": "active"
+    },
+    {
+      "from": "active",
+      "event": "E_premium_due",
+      "to": "premium_due"
+    },
+    {
+      "from": "premium_due",
+      "event": "E_pay_premium",
+      "to": "active",
+      "note": "缴费成功后回到保障中状态"
+    },
+    {
+      "from": "premium_due",
+      "event": "E_premium_overdue",
+      "to": "grace_period"
+    },
+    {
+      "from": "grace_period",
+      "event": "E_pay_premium",
+      "to": "active",
+      "note": "宽限期内缴费成功→保障继续"
+    },
+    {
+      "from": "grace_period",
+      "event": "E_grace_over",
+      "to": "lapsed"
+    },
+    {
+      "from": "lapsed",
+      "event": "E_reinstate",
+      "to": "reinstatement"
+    },
+    {
+      "from": "reinstatement",
+      "event": "E_approve",
+      "to": "active",
+      "note": "复效成功→恢复保障"
+    },
+    {
+      "from": "reinstatement",
+      "event": "E_decline",
+      "to": "terminated"
+    },
+    {
+      "from": "active",
+      "event": "E_renewal_assess",
+      "to": "renewal_due",
+      "note": "注意：仅适用于短期险或期满时"
+    },
+    {
+      "from": "renewal_due",
+      "event": "E_renewal_approved",
+      "to": "renewed"
+    },
+    {
+      "from": "renewal_due",
+      "event": "E_renewal_denied",
+      "to": "terminated"
+    },
+    {
+      "from": "renewal_due",
+      "event": "E_renewal_auto",
+      "to": "renewed",
+      "note": "保证续保产品自动续保"
+    },
+    {
+      "from": "renewed",
+      "event": "E_waiting_start",
+      "to": "waiting_period",
+      "note": "续保后重新进入等待期？取决于续保条款"
+    },
+    {
+      "from": "active",
+      "event": "E_surrender",
+      "to": "surrendered"
+    },
+    {
+      "from": "active",
+      "event": "E_terminate",
+      "to": "terminated",
+      "note": "理赔后/期满/解除→终止"
+    },
+    {
+      "from": "active",
+      "event": "E_mature",
+      "to": "fully_matured",
+      "note": "保险期届满→满期终止"
+    },
+    {
+      "from": "active",
+      "event": "E_decline",
+      "to": "terminated",
+      "note": "保险公司行使合同解除权"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D_cooling",
+      "node": "cooling_off",
+      "question": "投保人是否在犹豫期内退保？",
+      "yes": "surrendered→全额退费",
+      "no": "waiting_period→继续",
+      "rule_based": true,
+      "evidence_refs": [
+        "REG001-第十五条"
+      ],
+      "evidence_type": "regulation",
+      "note": "长期健康保险犹豫期≥15日"
+    },
+    {
+      "id": "D_waiting",
+      "node": "waiting_period",
+      "question": "保险事故是否发生在等待期内（非意外）？",
+      "yes": "不赔付（非意外）",
+      "no": "正常赔付",
+      "rule_based": true,
+      "evidence_refs": [
+        "REG001-第二十三条"
+      ],
+      "evidence_type": "regulation",
+      "note": "等待期≤180天，意外事故不受限"
+    },
+    {
+      "id": "D_renewal",
+      "node": "renewal_due",
+      "question": "是否为保证续保产品？",
+      "yes": "E_renewal_auto→renewed",
+      "no": "保险公司评估→同意/拒绝",
+      "rule_based": true,
+      "tool_driven": true,
+      "evidence_refs": [
+        "REG001-第十七条",
+        "PRODUCT_GUARANTEED_RENEWAL"
+      ],
+      "evidence_type": "regulation+product",
+      "note": "依赖产品catalog中is_guaranteed_renewal字段"
+    },
+    {
+      "id": "D_grace",
+      "node": "grace_period",
+      "question": "宽限期内是否补缴保费？",
+      "yes": "active→保障继续",
+      "no": "lapsed→失效",
+      "rule_based": true,
+      "evidence_refs": [
+        "REG003"
+      ],
+      "evidence_type": "regulation"
+    }
+  ],
+  "evidence_mapping": {
+    "REG001-15": {
+      "title": "健康保险管理办法第十五条",
+      "role": "犹豫期≥15日"
+    },
+    "REG001-17": {
+      "title": "健康保险管理办法第十七条",
+      "role": "保证续保条款定义"
+    },
+    "REG001-23": {
+      "title": "健康保险管理办法第二十三条",
+      "role": "等待期≤180日"
+    },
+    "REG003": {
+      "title": "保险法",
+      "role": "合同解除权（超2年不得解除）、宽限期"
+    },
+    "PRODUCT_CATALOG": {
+      "role": "产品catalog中的is_guaranteed_renewal/waiting_period_days/eligibility字段",
+      "source": "knowledge_pack/products/catalog.json"
+    }
+  },
+  "ontology_mapping": {
+    "product_entities": [
+      "ENT-P001",
+      "ENT-P002",
+      "ENT-P003",
+      "ENT-P004"
+    ],
+    "coverage_entities": [
+      "ENT-C001",
+      "ENT-C002",
+      "ENT-C006(保证续保)"
+    ],
+    "rule_entities": [
+      "ENT-RL001(等待期)",
+      "ENT-RL003(犹豫期)",
+      "ENT-RL004(如实告知)"
+    ],
+    "regulation_entities": [
+      "ENT-R001",
+      "ENT-R003"
+    ],
+    "relations": [
+      "REGULATED_BY",
+      "DEFINES",
+      "CONTAINS"
+    ]
+  },
+  "coverage_gaps": [
+    "保单贷款子流程未完整建模（仅状态，缺少事件/决策/证据）",
+    "减额交清/保费自动垫交等特殊处理未建模",
+    "受益人变更流程未建模",
+    "保单批改（信息变更）流程未建模",
+    "保证续保vs非保证续保产品在期满时的路径差异需细化",
+    "短期险(1年期)与长期险续保路径不同——当前模型混用"
+  ]
+}

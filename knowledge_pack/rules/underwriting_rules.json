@@ -1,0 +1,691 @@
+{
+  "meta": {
+    "domain": "underwriting",
+    "total": 14,
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "rule_id": "UW-001",
+      "domain": "underwriting",
+      "description": "投保人故意或因重大过失未如实告知，保险人有权解除合同",
+      "if": {
+        "conditions": [
+          {
+            "field": "health_disclosure",
+            "operator": "equals",
+            "value": "false"
+          },
+          {
+            "field": "materiality",
+            "operator": "equals",
+            "value": "sufficient_to_affect_decision"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "decline_and_void_contract"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG003-第十六条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL004",
+          "ENT-R003"
+        ],
+        "relations": [
+          "defines",
+          "regulates"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "health_declaration",
+        "trigger_event": "E_honesty_fail"
+      }
+    },
+    {
+      "rule_id": "UW-002",
+      "domain": "underwriting",
+      "description": "合同成立超过两年，保险人不得以未如实告知为由解除合同",
+      "if": {
+        "conditions": [
+          {
+            "field": "health_disclosure",
+            "operator": "equals",
+            "value": "false"
+          },
+          {
+            "field": "contract_age_years",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "then": {
+        "decision": "standard_accept",
+        "action": "waive_misrepresentation"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG003-第十六条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL004",
+          "ENT-R003"
+        ],
+        "relations": [
+          "defines"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "health_declaration",
+        "trigger_event": "E_honesty_pass"
+      }
+    },
+    {
+      "rule_id": "UW-003",
+      "domain": "underwriting",
+      "description": "确诊恶性肿瘤（甲状腺癌TNM-I期及以下除外），重疾险、医疗险一律拒保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "恶性肿瘤"
+          },
+          {
+            "field": "severity",
+            "operator": "in",
+            "value": [
+              "重度",
+              "中期",
+              "晚期"
+            ]
+          },
+          {
+            "field": "tnm_stage",
+            "operator": "gte",
+            "value": "II"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "permanent_decline"
+      },
+      "confidence": "HIGH",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-MALIGNANCY-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "covers",
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_assess_risk"
+      }
+    },
+    {
+      "rule_id": "UW-004",
+      "domain": "underwriting",
+      "description": "甲状腺癌TNM-I期，术后满1年无复发，部分医疗险可标准承保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "恶性肿瘤"
+          },
+          {
+            "field": "disease_subtype",
+            "operator": "equals",
+            "value": "甲状腺癌"
+          },
+          {
+            "field": "tnm_stage",
+            "operator": "equals",
+            "value": "I"
+          },
+          {
+            "field": "years_since_surgery",
+            "operator": "gte",
+            "value": 1
+          },
+          {
+            "field": "recurrence",
+            "operator": "equals",
+            "value": "false"
+          }
+        ]
+      },
+      "then": {
+        "decision": "standard_accept",
+        "action": "standard_underwriting_with_post_op_note"
+      },
+      "confidence": "MEDIUM",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-THYROID-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-P001",
+          "ENT-P002"
+        ],
+        "relations": [
+          "covers"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_standard"
+      }
+    },
+    {
+      "rule_id": "UW-005",
+      "domain": "underwriting",
+      "description": "急性心肌梗塞病史，重疾险/医疗险拒保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "急性心肌梗塞"
+          },
+          {
+            "field": "past_history",
+            "operator": "equals",
+            "value": "true"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "permanent_decline"
+      },
+      "confidence": "HIGH",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-CARDIO-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D002",
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "covers",
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_decline"
+      }
+    },
+    {
+      "rule_id": "UW-006",
+      "domain": "underwriting",
+      "description": "高血压（1级，血压≤160/100），定期寿险可标准承保，医疗险需加费",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "高血压"
+          },
+          {
+            "field": "severity",
+            "operator": "equals",
+            "value": "grade_1"
+          },
+          {
+            "field": "systolic_bp",
+            "operator": "lte",
+            "value": 160
+          },
+          {
+            "field": "diastolic_bp",
+            "operator": "lte",
+            "value": 100
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "定期寿险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "standard_accept",
+        "action": "standard_rate"
+      },
+      "confidence": "HIGH",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-HYPERTENSION-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D006",
+          "ENT-P016",
+          "ENT-P017"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_standard"
+      }
+    },
+    {
+      "rule_id": "UW-007",
+      "domain": "underwriting",
+      "description": "高血压（2级及以上，收缩压≥160或舒张压≥100），医疗险拒保/除外",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "高血压"
+          },
+          {
+            "field": "severity",
+            "operator": "in",
+            "value": [
+              "grade_2",
+              "grade_3"
+            ]
+          },
+          {
+            "field": "systolic_bp",
+            "operator": "gte",
+            "value": 160
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "百万医疗险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "exclusion",
+        "action": "exclude_cardiovascular"
+      },
+      "confidence": "MEDIUM",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-HYPERTENSION-02",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D006",
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "exclusion_eval",
+        "trigger_event": "E_evaluate_exclusion"
+      }
+    },
+    {
+      "rule_id": "UW-008",
+      "domain": "underwriting",
+      "description": "确诊糖尿病，医疗险/重疾险一律拒保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "糖尿病"
+          },
+          {
+            "field": "product_type",
+            "operator": "in",
+            "value": [
+              "百万医疗险",
+              "重疾险"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "permanent_decline"
+      },
+      "confidence": "HIGH",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-DIABETES-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D005",
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_decline"
+      }
+    },
+    {
+      "rule_id": "UW-009",
+      "domain": "underwriting",
+      "description": "糖尿病前期（糖耐量异常）未确诊，定期寿险可标准承保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "糖耐量异常"
+          },
+          {
+            "field": "diagnosed",
+            "operator": "equals",
+            "value": "false"
+          },
+          {
+            "field": "fbg",
+            "operator": "lt",
+            "value": 7.0
+          },
+          {
+            "field": "hba1c",
+            "operator": "lt",
+            "value": 6.5
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "定期寿险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "standard_accept",
+        "action": "standard_rate"
+      },
+      "confidence": "MEDIUM",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-PREDIABETES-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D005",
+          "ENT-P016",
+          "ENT-P017"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_standard"
+      }
+    },
+    {
+      "rule_id": "UW-010",
+      "domain": "underwriting",
+      "description": "甲状腺结节TI-RADS 1-2级，医疗险除外甲状腺责任后可承保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "甲状腺结节"
+          },
+          {
+            "field": "tirads",
+            "operator": "in",
+            "value": [
+              1,
+              2
+            ]
+          },
+          {
+            "field": "biopsy",
+            "operator": "equals",
+            "value": "benign"
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "百万医疗险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "exclusion",
+        "action": "exclude_thyroid_conditions"
+      },
+      "confidence": "MEDIUM",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-NODULE-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-P001",
+          "ENT-P002"
+        ],
+        "relations": [
+          "excludes",
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "exclusion_eval",
+        "trigger_event": "E_evaluate_exclusion"
+      }
+    },
+    {
+      "rule_id": "UW-011",
+      "domain": "underwriting",
+      "description": "甲状腺结节TI-RADS 3级且无恶性征象，除外后承保；4级及以上拒保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "甲状腺结节"
+          },
+          {
+            "field": "tirads",
+            "operator": "in",
+            "value": [
+              4,
+              5
+            ]
+          },
+          {
+            "field": "product_type",
+            "operator": "in",
+            "value": [
+              "百万医疗险",
+              "重疾险"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "decline_until_benign_confirmed"
+      },
+      "confidence": "HIGH",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-NODULE-03",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_decline"
+      }
+    },
+    {
+      "rule_id": "UW-012",
+      "domain": "underwriting",
+      "description": "乳腺结节BI-RADS 1-2级，医疗险除外乳腺后可承保",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "乳腺结节"
+          },
+          {
+            "field": "birads",
+            "operator": "in",
+            "value": [
+              1,
+              2
+            ]
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "百万医疗险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "exclusion",
+        "action": "exclude_breast_conditions"
+      },
+      "confidence": "MEDIUM",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-BREAST-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-P001",
+          "ENT-P002"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "exclusion_eval",
+        "trigger_event": "E_evaluate_exclusion"
+      }
+    },
+    {
+      "rule_id": "UW-013",
+      "domain": "underwriting",
+      "description": "高危职业（5-6类），意外险加费50%-100%或拒保",
+      "if": {
+        "conditions": [
+          {
+            "field": "occupation_category",
+            "operator": "in",
+            "value": [
+              "5",
+              "6"
+            ]
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "意外险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "extra_premium",
+        "action": "surcharge_50_to_100_percent_or_decline"
+      },
+      "confidence": "HIGH",
+      "source": "underwriting_manual",
+      "source_ref": "UW_MANUAL-OCCUPATION-01",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P013",
+          "ENT-P014",
+          "ENT-P015"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "added_premium_eval",
+        "trigger_event": "E_evaluate_premium"
+      }
+    },
+    {
+      "rule_id": "UW-014",
+      "domain": "underwriting",
+      "description": "年龄超过产品最高投保年龄，直接拒保",
+      "if": {
+        "conditions": [
+          {
+            "field": "age",
+            "operator": "gt",
+            "value": "product_max_age"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "age_exceeds_limit"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-eligibility",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003",
+          "ENT-P004"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "underwriting_lifecycle",
+        "node": "risk_assessment",
+        "trigger_event": "E_decline"
+      }
+    }
+  ]
+}

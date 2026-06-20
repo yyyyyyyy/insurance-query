@@ -1,0 +1,418 @@
+{
+  "meta": {
+    "version": "1.0",
+    "generated": "2026-06-20",
+    "source": "Official product brochures, insurance company websites, regulatory filings",
+    "total_products": 20
+  },
+  "products": [
+    {
+      "product_id": "P001",
+      "name": "平安e生保·百万医疗(2025版)",
+      "company": "平安健康保险",
+      "category": "百万医疗险",
+      "sub_category": "长期医疗",
+      "guaranteed_renewal": "20年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度400万",
+        "critical_illness": "年度400万",
+        "outpatient": "可选",
+        "proton_heavy_ion": "100%报销"
+      },
+      "deductible": "年度1万元",
+      "waiting_period": "30天",
+      "exclusions": ["既往症", "美容整形", "牙科治疗", "生育相关"],
+      "premium_reference": {"age_30": 380, "age_40": 580, "age_50": 980},
+      "max_age": 65,
+      "min_age": 0,
+      "source_url": "https://health.pingan.com"
+    },
+    {
+      "product_id": "P002",
+      "name": "好医保·长期医疗(旗舰版2025)",
+      "company": "人保健康",
+      "category": "百万医疗险",
+      "sub_category": "长期医疗",
+      "guaranteed_renewal": "癌症及11种心脑血管疾病终身续保，一般医疗20年",
+      "coverage": {
+        "general_hospitalization": "年度400万",
+        "critical_illness": "年度400万",
+        "cancer_cardiovascular_lifetime": "终身累计1000万"
+      },
+      "deductible": "0免赔(1万以下报30%)",
+      "waiting_period": "30天",
+      "exclusions": ["既往症", "生育相关", "高风险运动"],
+      "premium_reference": {"age_30": 417, "age_40": 650, "age_50": 1200},
+      "max_age": 60,
+      "min_age": 0,
+      "source_url": "https://www.pichealth.com"
+    },
+    {
+      "product_id": "P003",
+      "name": "蓝医保·好医好药版(2025)",
+      "company": "太平洋健康险",
+      "category": "百万医疗险",
+      "sub_category": "长期医疗",
+      "guaranteed_renewal": "20年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度400万",
+        "critical_illness": "年度400万",
+        "outpatient_drugs": "外购药100%报销不限清单"
+      },
+      "deductible": "年度1万(家庭共享可选)",
+      "waiting_period": "30天",
+      "exclusions": ["既往症", "美容整形", "牙科"],
+      "premium_reference": {"age_30": 350, "age_40": 540, "age_50": 900},
+      "max_age": 65,
+      "min_age": 0,
+      "source_url": "https://www.cpic.com.cn"
+    },
+    {
+      "product_id": "P004",
+      "name": "金医保3号(2025)",
+      "company": "人保寿险",
+      "category": "百万医疗险",
+      "sub_category": "长期医疗",
+      "guaranteed_renewal": "20年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度400万",
+        "critical_illness": "重疾0免赔",
+        "exotic_drugs": "外购药0免赔100%报销"
+      },
+      "deductible": "一般医疗1万(可选0免赔附加)",
+      "waiting_period": "30天",
+      "exclusions": ["既往症", "生育相关", "美容"],
+      "premium_reference": {"age_30": 240, "age_40": 420, "age_50": 780},
+      "max_age": 60,
+      "min_age": 0,
+      "source_url": "https://www.picclife.cn"
+    },
+    {
+      "product_id": "P005",
+      "name": "星相守(计划一)(2025)",
+      "company": "复星联合健康",
+      "category": "百万医疗险",
+      "sub_category": "长期医疗",
+      "guaranteed_renewal": "20年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度400万",
+        "critical_illness": "年度400万",
+        "VIP_ward": "支持单人病房和特需部"
+      },
+      "deductible": "可选0免赔",
+      "waiting_period": "30天",
+      "exclusions": ["既往症"],
+      "premium_reference": {"age_30": 320, "age_40": 490, "age_50": 820},
+      "max_age": 60,
+      "min_age": 0,
+      "source_url": "https://www.fosunhealth.com"
+    },
+    {
+      "product_id": "P006",
+      "name": "尊享e生2025版",
+      "company": "众安保险",
+      "category": "百万医疗险",
+      "sub_category": "短期医疗",
+      "guaranteed_renewal": "6年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度300万",
+        "critical_illness": "年度600万",
+        "proton_heavy_ion": "100%报销"
+      },
+      "deductible": "年度1万(可选0免赔)",
+      "waiting_period": "30天",
+      "exclusions": ["既往症", "美容整形"],
+      "premium_reference": {"age_30": 330, "age_40": 510, "age_50": 880},
+      "max_age": 60,
+      "min_age": 0,
+      "source_url": "https://www.zhongan.com"
+    },
+    {
+      "product_id": "P007",
+      "name": "中意E民保",
+      "company": "中意人寿",
+      "category": "百万医疗险",
+      "sub_category": "易核保医疗",
+      "guaranteed_renewal": "3年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度300万",
+        "critical_illness": "年度300万",
+        "genetic_diseases": "8种遗传病覆盖"
+      },
+      "deductible": "经典版1万",
+      "waiting_period": "30天",
+      "exclusions": ["既往症(已治愈可保)"],
+      "premium_reference": {"age_30": 250, "age_40": 400, "age_50": 700},
+      "max_age": 70,
+      "min_age": 0,
+      "special": "无健康告知",
+      "source_url": "https://www.generalichina.com"
+    },
+    {
+      "product_id": "P008",
+      "name": "超级玛丽13号",
+      "company": "君龙人寿",
+      "category": "重疾险",
+      "sub_category": "消费型重疾",
+      "guaranteed_period": "可选保至70岁或终身",
+      "coverage": {
+        "critical_illness": "单次赔付100%保额(60岁前额外赔80%)",
+        "mild_illness": "轻症40种×4次×30%保额",
+        "moderate_illness": "中症35种×3次×60%保额",
+        "cancer_continuous": "癌症津贴每年40%×3次",
+        "lung_cancer_extra": "肺结节良性赔5%，术后1年确诊肺癌额外30%"
+      },
+      "diseases_covered": 195,
+      "waiting_period": "180天",
+      "premium_reference": {"age_30_male_50w": 6160},
+      "max_age": 50,
+      "min_age": 0,
+      "source_url": "https://www.kli.com.cn"
+    },
+    {
+      "product_id": "P009",
+      "name": "达尔文11号(超越版)",
+      "company": "瑞华健康",
+      "category": "重疾险",
+      "sub_category": "消费型重疾",
+      "guaranteed_period": "终身",
+      "coverage": {
+        "critical_illness": "单次赔付(60岁前180%保额)",
+        "mild_illness": "轻症×40%保额",
+        "moderate_illness": "中症×60%保额",
+        "accident_critical_extra": "意外重疾额外赔35%",
+        "cancer_allowance": "癌症津贴40%×3次",
+        "cardiovascular_2nd": "10种心脑特疾额外120%"
+      },
+      "diseases_covered": 180,
+      "waiting_period": "90天",
+      "premium_reference": {"age_30_male_50w": 5985},
+      "max_age": 55,
+      "min_age": 0,
+      "source_url": "https://www.rh-health.com"
+    },
+    {
+      "product_id": "P010",
+      "name": "守卫者7号",
+      "company": "君龙人寿",
+      "category": "重疾险",
+      "sub_category": "多次赔付重疾",
+      "guaranteed_period": "可选保至70岁或终身",
+      "coverage": {
+        "critical_illness": "不分组6次赔付(125种，递增至160%保额)",
+        "mild_illness": "轻症6次×30%保额",
+        "moderate_illness": "中症6次×60%保额",
+        "cancer_allowance": "癌症津贴40%×3次",
+        "cardiovascular_extra": "心脑血管额外120%",
+        "ICU_benefit": "ICU住院津贴"
+      },
+      "diseases_covered": 195,
+      "waiting_period": "180天",
+      "premium_reference": {"age_30_male_50w": 7500},
+      "max_age": 50,
+      "min_age": 0,
+      "source_url": "https://www.kli.com.cn"
+    },
+    {
+      "product_id": "P011",
+      "name": "i无忧3.0",
+      "company": "人保寿险",
+      "category": "重疾险",
+      "sub_category": "易核保重疾",
+      "guaranteed_period": "可选保至70岁或终身",
+      "coverage": {
+        "critical_illness": "单次赔付100%保额",
+        "mild_illness": "轻症×30%保额",
+        "moderate_illness": "中症×60%保额"
+      },
+      "diseases_covered": 125,
+      "waiting_period": "180天",
+      "premium_reference": {"age_30_male_50w": 6800},
+      "max_age": 50,
+      "min_age": 0,
+      "special": "核保宽松：结节/乙肝/高血压可投",
+      "source_url": "https://www.picclife.cn"
+    },
+    {
+      "product_id": "P012",
+      "name": "平安福·重疾险(2025)",
+      "company": "平安人寿",
+      "category": "重疾险",
+      "sub_category": "终身重疾",
+      "guaranteed_period": "终身",
+      "coverage": {
+        "critical_illness": "单次赔付100%保额",
+        "mild_illness": "轻症×20%保额",
+        "moderate_illness": "中症×50%保额",
+        "death_benefit": "身故返保额",
+        "sports_bonus": "运动达标额外增加保额"
+      },
+      "diseases_covered": 150,
+      "waiting_period": "90天",
+      "premium_reference": {"age_30_male_50w": 12500},
+      "max_age": 55,
+      "min_age": 18,
+      "source_url": "https://www.pingan.com"
+    },
+    {
+      "product_id": "P013",
+      "name": "小蜜蜂6号意外险",
+      "company": "太平洋保险",
+      "category": "意外险",
+      "sub_category": "综合意外",
+      "guaranteed_period": "1年",
+      "coverage": {
+        "accidental_death": "最高100万",
+        "accidental_medical": "意外医疗0免赔不限社保100%报销",
+        "sudden_death": "猝死保障",
+        "hospitalization_allowance": "住院津贴100元/天",
+        "transportation_extra": "航空意外最高1000万"
+      },
+      "premium_reference": {"classic": 96, "premium": 156, "supreme": 296},
+      "max_age": 60,
+      "min_age": 18,
+      "source_url": "https://www.cpic.com.cn"
+    },
+    {
+      "product_id": "P014",
+      "name": "大护甲8号意外险",
+      "company": "人保财险",
+      "category": "意外险",
+      "sub_category": "综合意外",
+      "guaranteed_period": "1年",
+      "coverage": {
+        "accidental_death": "最高100万",
+        "accidental_medical": "0免赔不限社保100%报销",
+        "sudden_death": "猝死额外保障",
+        "high_risk_sports": "覆盖部分高风险运动",
+        "family_discount": "家庭投保95折"
+      },
+      "premium_reference": {"basic": 108, "standard": 168, "premium": 298},
+      "max_age": 60,
+      "min_age": 18,
+      "source_url": "https://www.picc.com"
+    },
+    {
+      "product_id": "P015",
+      "name": "小蜜蜂(畅享版)意外险",
+      "company": "平安产险",
+      "category": "意外险",
+      "sub_category": "易投保意外",
+      "guaranteed_period": "1年",
+      "coverage": {
+        "accidental_death": "最高50万",
+        "accidental_medical": "0免赔社保内100%报销",
+        "fracture_allowance": "骨折津贴",
+        "third_party_liability": "第三者责任"
+      },
+      "premium_reference": {"basic": 86, "standard": 156},
+      "max_age": 65,
+      "min_age": 18,
+      "special": "无健康告知，无地区限制",
+      "source_url": "https://www.pingan.com"
+    },
+    {
+      "product_id": "P016",
+      "name": "国富定海柱8号定期寿险",
+      "company": "国富人寿",
+      "category": "定期寿险",
+      "sub_category": "消费型定寿",
+      "guaranteed_period": "保至60/65/70岁",
+      "coverage": {
+        "death": "100%保额",
+        "total_disability": "100%保额",
+        "sudden_death_extra": "65岁前猝死额外赔30%",
+        "age45_extra": "45岁前身故额外50%",
+        "spouse_same_accident": "夫妻同一意外额外100%"
+      },
+      "max_coverage": "350万",
+      "exclusions": "仅3条免责",
+      "premium_reference": {"age_30_male_100w_to60": 1100},
+      "max_age": 60,
+      "min_age": 18,
+      "special": "不问乙肝/结节，健告最宽松",
+      "source_url": "https://www.guofushengming.com"
+    },
+    {
+      "product_id": "P017",
+      "name": "华贵大麦2026A款定期寿险",
+      "company": "华贵人寿",
+      "category": "定期寿险",
+      "sub_category": "高保额定寿",
+      "guaranteed_period": "保至60/65/70岁",
+      "coverage": {
+        "death": "100%保额",
+        "total_disability": "100%保额",
+        "aviation_extra": "航空意外最高1000万",
+        "disability_income": "可选失能收入损失险（最高5万/月×10年）"
+      },
+      "max_coverage": "400万（免体检）",
+      "exclusions": "3条免责(45岁以上加1条)",
+      "premium_reference": {"age_30_male_100w_to60": 1200},
+      "max_age": 60,
+      "min_age": 18,
+      "source_url": "https://www.hg-life.com"
+    },
+    {
+      "product_id": "P018",
+      "name": "擎天柱12号定期寿险",
+      "company": "和泰人寿",
+      "category": "定期寿险",
+      "sub_category": "消费型定寿",
+      "guaranteed_period": "保至60/65/70岁",
+      "coverage": {
+        "death": "100%保额",
+        "total_disability": "100%保额",
+        "sudden_death_extra": "猝死额外保障",
+        "transportation_extra": "交通意外额外赔付"
+      },
+      "max_coverage": "300万",
+      "premium_reference": {"age_30_male_100w_to60": 1050},
+      "max_age": 60,
+      "min_age": 18,
+      "special": "市场地板价",
+      "source_url": "https://www.ht-life.com"
+    },
+    {
+      "product_id": "P019",
+      "name": "e生保·长期医疗(20年版)",
+      "company": "平安健康保险",
+      "category": "百万医疗险",
+      "sub_category": "长期医疗",
+      "guaranteed_renewal": "20年保证续保",
+      "coverage": {
+        "general_hospitalization": "年度200万",
+        "specific_diseases": "特定疾病200万",
+        "hospitalization_advance": "住院垫付",
+        "green_channel": "重疾绿通"
+      },
+      "deductible": "年度1万",
+      "waiting_period": "30天",
+      "exclusions": ["既往症", "美容整形", "牙科", "生育相关"],
+      "premium_reference": {"age_30": 380, "age_40": 600, "age_50": 1050},
+      "max_age": 55,
+      "min_age": 0,
+      "source_url": "https://health.pingan.com"
+    },
+    {
+      "product_id": "P020",
+      "name": "微医保·百万医疗(2025)",
+      "company": "泰康在线",
+      "category": "百万医疗险",
+      "sub_category": "短期医疗",
+      "guaranteed_renewal": "1年期",
+      "coverage": {
+        "general_hospitalization": "年度300万",
+        "critical_illness": "年度600万",
+        "online_consultation": "在线问诊"
+      },
+      "deductible": "年度1万",
+      "waiting_period": "30天",
+      "exclusions": ["既往症"],
+      "premium_reference": {"age_30": 260, "age_40": 420, "age_50": 760},
+      "max_age": 65,
+      "min_age": 0,
+      "source_url": "https://www.tk.cn"
+    }
+  ]
+}

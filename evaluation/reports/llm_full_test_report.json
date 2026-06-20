@@ -1,0 +1,522 @@
+{
+  "llm": {
+    "model": "deepseek-v4-flash",
+    "configured": true
+  },
+  "knowledge_engine_batch": {
+    "run_id": "RUN-2fd60ded",
+    "total": 14,
+    "passed": 0,
+    "failed": 14,
+    "avg_score": 92.1,
+    "avg_latency_ms": 11993.9,
+    "per_sample": [
+      {
+        "sample_id": "E001",
+        "question": "比较e生保和好医保的保障范围",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 17474.0,
+        "passed": false,
+        "evidence_count": 17,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E002",
+        "question": "e生保和好医保哪个免赔额更低",
+        "score": 96.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 7324.7,
+        "passed": false,
+        "evidence_count": 17,
+        "diagnosis": "Issues detected (1):\n  - High latency\nLowest dimension: efficiency (score: 0.60)"
+      },
+      {
+        "sample_id": "E003",
+        "question": "平安福和国寿福重疾保障对比",
+        "score": 96.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 6741.5,
+        "passed": false,
+        "evidence_count": 14,
+        "diagnosis": "Issues detected (1):\n  - High latency\nLowest dimension: efficiency (score: 0.60)"
+      },
+      {
+        "sample_id": "E004",
+        "question": "重疾险保障哪些疾病",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 10450.7,
+        "passed": false,
+        "evidence_count": 14,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E005",
+        "question": "e生保的门诊手术费用怎么报销",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 9487.5,
+        "passed": false,
+        "evidence_count": 15,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E006",
+        "question": "百万医疗险的住院保障额度是多少",
+        "score": 96.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 16825.7,
+        "passed": false,
+        "evidence_count": 14,
+        "diagnosis": "Issues detected (1):\n  - High latency\nLowest dimension: efficiency (score: 0.60)"
+      },
+      {
+        "sample_id": "E007",
+        "question": "健康保险管理办法对等待期的规定是什么",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 9337.0,
+        "passed": false,
+        "evidence_count": 23,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E008",
+        "question": "保险法对如实告知义务的规定",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 8649.3,
+        "passed": false,
+        "evidence_count": 22,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E009",
+        "question": "保证续保条款的监管要求是什么",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 6560.0,
+        "passed": false,
+        "evidence_count": 15,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E010",
+        "question": "保证续保是什么意思？e生保和好医保哪个有保证续保",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 20018.8,
+        "passed": false,
+        "evidence_count": 17,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E011",
+        "question": "如果得了癌症，e生保和好医保分别能赔多少",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 25802.9,
+        "passed": false,
+        "evidence_count": 17,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E012",
+        "question": "重疾险的等待期是多少天？监管有什么限制？",
+        "score": 90.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 10910.9,
+        "passed": false,
+        "evidence_count": 14,
+        "diagnosis": "Issues detected (2):\n  - No overlap with expected evidence\n  - High latency\nLowest dimension: effici"
+      },
+      {
+        "sample_id": "E013",
+        "question": "e生保是否覆盖太空旅行意外",
+        "score": 96.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 10300.4,
+        "passed": false,
+        "evidence_count": 15,
+        "diagnosis": "Issues detected (1):\n  - High latency\nLowest dimension: efficiency (score: 0.60)"
+      },
+      {
+        "sample_id": "E014",
+        "question": "某产品4999年版本条款",
+        "score": 96.0,
+        "hallucination_score": 0.25,
+        "hallucination_severity": "MEDIUM",
+        "latency_ms": 8031.8,
+        "passed": false,
+        "evidence_count": 19,
+        "diagnosis": "Issues detected (1):\n  - High latency\nLowest dimension: efficiency (score: 0.60)"
+      }
+    ],
+    "system_feedback": [
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (17474ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (7325ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (6741ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (10451ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (9487ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (16826ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (9337ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (8649ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (6560ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (20019ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (25803ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (10911ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (10300ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      },
+      {
+        "issue_type": "retrieval_quality",
+        "root_cause": "Ontology not influencing retrieval enough",
+        "fix_suggestion": "Boost ontology_boost weight in HybridRetriever from 0.2 to 0.4",
+        "affected_module": "knowledge.retrieval.engine",
+        "severity": "MEDIUM"
+      },
+      {
+        "issue_type": "evidence_quality",
+        "root_cause": "Hallucination detected: MEDIUM",
+        "fix_suggestion": "Force evidence_before_answer gate; reject answers with <3 evidence items",
+        "affected_module": "knowledge.engine",
+        "severity": "HIGH"
+      },
+      {
+        "issue_type": "planner_quality",
+        "root_cause": "High latency (8032ms)",
+        "fix_suggestion": "Reduce tool calls; cache frequent retrieval results",
+        "affected_module": "runtime.engine.engine",
+        "severity": "LOW"
+      }
+    ]
+  },
+  "multi_agent_summary": {
+    "intent_match": 12,
+    "total": 14,
+    "avg_latency_ms": 8350.1,
+    "per_sample": [
+      {
+        "sample_id": "E001",
+        "intent": "product_comparison",
+        "expected_intent": "product_comparison",
+        "intent_match": true,
+        "evidence_count": 7,
+        "eval_score": 90.0,
+        "latency_ms": 11371.4,
+        "answer_preview": "好的，以下是根据现有资料为您整理的两款产品的保障范围对比。  ### 保障范围对比：e生保·百万医疗 vs. 好医保·长期医疗  | 对比维度 | **e生保·"
+      },
+      {
+        "sample_id": "E002",
+        "intent": "product_comparison",
+        "expected_intent": "product_comparison",
+        "intent_match": true,
+        "evidence_count": 7,
+        "eval_score": 90.0,
+        "latency_ms": 5321.2,
+        "answer_preview": "根据产品对比结果，**e生保·百万医疗**和**好医保·长期医疗**的免赔额均为 **10,000 元**，两者完全相同，没有哪一款更低。  | 产品 | 免赔"
+      },
+      {
+        "sample_id": "E003",
+        "intent": "product_comparison",
+        "expected_intent": "product_comparison",
+        "intent_match": true,
+        "evidence_count": 0,
+        "eval_score": 42.0,
+        "latency_ms": 8345.2,
+        "answer_preview": "根据现有资料，无法确定平安福和国寿福在重疾保障方面的具体对比信息，因为没有提供任何相关数据或产品细节。  本回答基于 0 条证据。"
+      },
+      {
+        "sample_id": "E004",
+        "intent": "coverage_question",
+        "expected_intent": "coverage_question",
+        "intent_match": true,
+        "evidence_count": 0,
+        "eval_score": 42.0,
+        "latency_ms": 5915.0,
+        "answer_preview": "根据现有资料无法确定。  本回答基于 0 条证据"
+      },
+      {
+        "sample_id": "E005",
+        "intent": "claim_process",
+        "expected_intent": "coverage_question",
+        "intent_match": false,
+        "evidence_count": 5,
+        "eval_score": 90.0,
+        "latency_ms": 7268.1,
+        "answer_preview": "根据现有资料，关于 **e生保·百万医疗** 的门诊手术费用报销，目前仅能提供通用的理赔流程和所需材料，但**无法确定该产品是否具体包含门诊手术费用的报销责任、"
+      },
+      {
+        "sample_id": "E006",
+        "intent": "coverage_question",
+        "expected_intent": "coverage_question",
+        "intent_match": true,
+        "evidence_count": 0,
+        "eval_score": 42.0,
+        "latency_ms": 6305.6,
+        "answer_preview": "根据现有资料无法确定百万医疗险的住院保障额度。  本回答基于 0 条证据"
+      },
+      {
+        "sample_id": "E007",
+        "intent": "regulation_lookup",
+        "expected_intent": "regulation_lookup",
+        "intent_match": true,
+        "evidence_count": 13,
+        "eval_score": 90.0,
+        "latency_ms": 6682.0,
+        "answer_preview": "根据《健康保险管理办法（2019年修订）》，关于等待期的规定如下：  **第二十三条** 保险公司在健康保险产品条款中约定的等待期不得超过 **180日**。同"
+      },
+      {
+        "sample_id": "E008",
+        "intent": "regulation_lookup",
+        "expected_intent": "regulation_lookup",
+        "intent_match": true,
+        "evidence_count": 12,
+        "eval_score": 90.0,
+        "latency_ms": 6813.7,
+        "answer_preview": "根据《中华人民共和国保险法（2015年修正）》第十六条，保险法对如实告知义务的规定如下：  - **投保人的如实告知义务**：订立保险合同时，保险人就保险标的或"
+      },
+      {
+        "sample_id": "E009",
+        "intent": "regulation_lookup",
+        "expected_intent": "regulation_lookup",
+        "intent_match": true,
+        "evidence_count": 5,
+        "eval_score": 90.0,
+        "latency_ms": 7464.3,
+        "answer_preview": "根据《健康保险管理办法（2019年修订）》，保证续保条款的监管要求如下：  **保证续保条款的定义**   保证续保条款是指，在前一保险期间届满后，投保人提出续"
+      },
+      {
+        "sample_id": "E010",
+        "intent": "product_comparison",
+        "expected_intent": "product_comparison",
+        "intent_match": true,
+        "evidence_count": 7,
+        "eval_score": 90.0,
+        "latency_ms": 11438.1,
+        "answer_preview": "## 保证续保的含义  **保证续保**是指在保险合同到期后，保险公司必须按照约定的条件和费率，无条件接受投保人的续保申请，不会因为被保险人健康状况变化、历史理"
+      },
+      {
+        "sample_id": "E011",
+        "intent": "product_comparison",
+        "expected_intent": "product_comparison",
+        "intent_match": true,
+        "evidence_count": 7,
+        "eval_score": 90.0,
+        "latency_ms": 14126.0,
+        "answer_preview": "根据现有资料，e生保·百万医疗和好医保·长期医疗均属于**百万医疗险**，对于癌症（属于重大疾病）的赔付，核心取决于**实际医疗花费**是否超过**免赔额**，"
+      },
+      {
+        "sample_id": "E012",
+        "intent": "regulation_lookup",
+        "expected_intent": "regulation_lookup",
+        "intent_match": true,
+        "evidence_count": 3,
+        "eval_score": 90.0,
+        "latency_ms": 8682.0,
+        "answer_preview": "根据《健康保险管理办法（2019年修订）》第二十三条的规定：  - 重疾险（属于健康保险）的等待期**不得超过180日**。 - 监管明确禁止保险公司**通过延"
+      },
+      {
+        "sample_id": "E013",
+        "intent": "coverage_question",
+        "expected_intent": "coverage_question",
+        "intent_match": true,
+        "evidence_count": 5,
+        "eval_score": 90.0,
+        "latency_ms": 10324.1,
+        "answer_preview": "根据现有公开资料，**无法确定平安e生保·百万医疗是否覆盖太空旅行意外**。原因如下：  1. **意外伤害保障范围不明确**：条款第3.1条规定，一般医疗保险"
+      },
+      {
+        "sample_id": "E014",
+        "intent": "regulation_lookup",
+        "expected_intent": "general_inquiry",
+        "intent_match": false,
+        "evidence_count": 9,
+        "eval_score": 90.0,
+        "latency_ms": 6844.9,
+        "answer_preview": "根据现有资料，**无法确定**您提到的\"某产品4999年版本条款\"的具体内容。当前可获取的监管文件包括《健康保险管理办法（2019年修订）》和《重大疾病保险的疾"
+      }
+    ]
+  }
+}

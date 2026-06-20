@@ -1,0 +1,571 @@
+{
+  "meta": {
+    "domain": "claim",
+    "total": 13,
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "rule_id": "CL-001",
+      "domain": "claim",
+      "description": "等待期内因非意外伤害发生保险事故，不予赔付",
+      "if": {
+        "conditions": [
+          {
+            "field": "waiting_period_status",
+            "operator": "equals",
+            "value": "within_waiting_period"
+          },
+          {
+            "field": "cause_type",
+            "operator": "equals",
+            "value": "non_accidental"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "deny_claim_in_waiting_period"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG001-第二十三条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL001",
+          "ENT-R001"
+        ],
+        "relations": [
+          "defines",
+          "regulates"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "coverage_verification",
+        "trigger_event": "E_out_coverage"
+      }
+    },
+    {
+      "rule_id": "CL-002",
+      "domain": "claim",
+      "description": "意外伤害事故不受等待期限制，正常进入理赔流程",
+      "if": {
+        "conditions": [
+          {
+            "field": "waiting_period_status",
+            "operator": "equals",
+            "value": "within_waiting_period"
+          },
+          {
+            "field": "cause_type",
+            "operator": "equals",
+            "value": "accidental"
+          }
+        ]
+      },
+      "then": {
+        "decision": "approve",
+        "action": "proceed_to_coverage_check"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG001-第二十三条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL001",
+          "ENT-R001"
+        ],
+        "relations": [
+          "defines"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "coverage_verification",
+        "trigger_event": "E_in_coverage"
+      }
+    },
+    {
+      "rule_id": "CL-003",
+      "domain": "claim",
+      "description": "疾病不在合同约定的保障范围，不予赔付",
+      "if": {
+        "conditions": [
+          {
+            "field": "claim_type",
+            "operator": "equals",
+            "value": "disease_claim"
+          },
+          {
+            "field": "disease_covered",
+            "operator": "equals",
+            "value": "false"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "disease_not_covered"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT-{claimed_product}-coverage",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-D002",
+          "ENT-D003",
+          "ENT-D004",
+          "ENT-C002",
+          "ENT-C003",
+          "ENT-C004"
+        ],
+        "relations": [
+          "covers",
+          "not_covered"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "liability_check",
+        "trigger_event": "E_not_liability"
+      }
+    },
+    {
+      "rule_id": "CL-004",
+      "domain": "claim",
+      "description": "疾病已在合同保障范围内且满足赔付条件，赔付",
+      "if": {
+        "conditions": [
+          {
+            "field": "claim_type",
+            "operator": "equals",
+            "value": "disease_claim"
+          },
+          {
+            "field": "disease_covered",
+            "operator": "equals",
+            "value": "true"
+          },
+          {
+            "field": "diagnosis_confirmed",
+            "operator": "equals",
+            "value": "true"
+          }
+        ]
+      },
+      "then": {
+        "decision": "approve",
+        "action": "evaluate_payout_amount"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT-{claimed_product}-coverage",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-D002",
+          "ENT-D003",
+          "ENT-D004",
+          "ENT-C001",
+          "ENT-C002"
+        ],
+        "relations": [
+          "covers",
+          "triggers"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "liability_check",
+        "trigger_event": "E_in_liability"
+      }
+    },
+    {
+      "rule_id": "CL-005",
+      "domain": "claim",
+      "description": "事故属于免责条款范围，拒赔",
+      "if": {
+        "conditions": [
+          {
+            "field": "exclusion_status",
+            "operator": "equals",
+            "value": "excluded"
+          },
+          {
+            "field": "policy_exclusions",
+            "operator": "contains",
+            "value": "{claim_scenario}"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "exclusion_applies"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC001-C007",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "exclusion_check",
+        "trigger_event": "E_excluded"
+      }
+    },
+    {
+      "rule_id": "CL-006",
+      "domain": "claim",
+      "description": "美容整形/牙科治疗属于免责范围，拒赔",
+      "if": {
+        "conditions": [
+          {
+            "field": "claim_scenario",
+            "operator": "in",
+            "value": [
+              "美容整形",
+              "牙科治疗",
+              "视力矫正",
+              "生育相关费用"
+            ]
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "百万医疗险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "standard_exclusion_cosmetic_dental"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC001-C007",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "exclusion_check",
+        "trigger_event": "E_excluded"
+      }
+    },
+    {
+      "rule_id": "CL-007",
+      "domain": "claim",
+      "description": "医疗费用在免赔额以下，不予理赔",
+      "if": {
+        "conditions": [
+          {
+            "field": "claimable_amount",
+            "operator": "lte",
+            "value": "policy_deductible"
+          },
+          {
+            "field": "coverage_type",
+            "operator": "in",
+            "value": [
+              "general_hospitalization",
+              "non_critical"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "reject",
+        "action": "below_deductible"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC001-C004",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL002",
+          "ENT-C001"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "claim_evaluated",
+        "trigger_event": "E_evaluate"
+      }
+    },
+    {
+      "rule_id": "CL-008",
+      "domain": "claim",
+      "description": "社保/公费医疗已支付和商保补偿可计入免赔额",
+      "if": {
+        "conditions": [
+          {
+            "field": "payment_source",
+            "operator": "in",
+            "value": [
+              "social_insurance",
+              "public_medical",
+              "other_commercial"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "partial_approve",
+        "action": "offset_deductible_with_third_party_payment"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC001-C004",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL002",
+          "ENT-C001"
+        ],
+        "relations": [
+          "applies_to"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "claim_evaluated",
+        "trigger_event": "E_evaluate"
+      }
+    },
+    {
+      "rule_id": "CL-009",
+      "domain": "claim",
+      "description": "理赔材料不完整，要求补充材料（可在30日内补件）",
+      "if": {
+        "conditions": [
+          {
+            "field": "documents",
+            "operator": "equals",
+            "value": "incomplete"
+          },
+          {
+            "field": "missing_documents",
+            "operator": "contains_any",
+            "value": [
+              "diagnosis_report",
+              "medical_bills",
+              "id_copy",
+              "policy_original",
+              "claim_form"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "request_more_docs",
+        "action": "notify_and_set_supplement_deadline"
+      },
+      "confidence": "HIGH",
+      "source": "claim_guideline",
+      "source_ref": "REG003-第二十三条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-R003"
+        ],
+        "relations": [
+          "regulates"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "document_submitted",
+        "trigger_event": "E_docs_incomplete"
+      }
+    },
+    {
+      "rule_id": "CL-010",
+      "domain": "claim",
+      "description": "理赔材料完整，进入核定阶段（30日内核定）",
+      "if": {
+        "conditions": [
+          {
+            "field": "documents",
+            "operator": "equals",
+            "value": "complete"
+          }
+        ]
+      },
+      "then": {
+        "decision": "approve",
+        "action": "proceed_to_claim_evaluation"
+      },
+      "confidence": "HIGH",
+      "source": "claim_guideline",
+      "source_ref": "REG003-第二十三条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-R003"
+        ],
+        "relations": [
+          "regulates"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "document_submitted",
+        "trigger_event": "E_docs_complete"
+      }
+    },
+    {
+      "rule_id": "CL-011",
+      "domain": "claim",
+      "description": "恶性肿瘤须经病理学检查明确诊断，符合ICD-O-3标准方可赔付",
+      "if": {
+        "conditions": [
+          {
+            "field": "claim_type",
+            "operator": "equals",
+            "value": "critical_illness"
+          },
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "恶性肿瘤"
+          },
+          {
+            "field": "diagnosis_method",
+            "operator": "equals",
+            "value": "pathology_report"
+          },
+          {
+            "field": "icd_o_3_confirmed",
+            "operator": "equals",
+            "value": "true"
+          }
+        ]
+      },
+      "then": {
+        "decision": "approve",
+        "action": "cancer_claim_approved"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG002-恶性肿瘤定义",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-R002"
+        ],
+        "relations": [
+          "defined_by",
+          "triggers"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "claim_evaluated",
+        "trigger_event": "E_approve"
+      }
+    },
+    {
+      "rule_id": "CL-012",
+      "domain": "claim",
+      "description": "甲状腺癌TNM-I期按轻度疾病赔付（≤30%基本保额）",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "equals",
+            "value": "甲状腺癌"
+          },
+          {
+            "field": "tnm_stage",
+            "operator": "equals",
+            "value": "I"
+          },
+          {
+            "field": "product_type",
+            "operator": "equals",
+            "value": "重疾险"
+          }
+        ]
+      },
+      "then": {
+        "decision": "partial_approve",
+        "action": "mild_disease_payout_max_30_percent"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG002-甲状腺癌分级",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-C004",
+          "ENT-R002"
+        ],
+        "relations": [
+          "defined_by",
+          "triggers"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "claim_evaluated",
+        "trigger_event": "E_approve"
+      }
+    },
+    {
+      "rule_id": "CL-013",
+      "domain": "claim",
+      "description": "出险后超过48小时报案可能影响理赔，但不当然拒赔",
+      "if": {
+        "conditions": [
+          {
+            "field": "hours_since_accident",
+            "operator": "gt",
+            "value": 48
+          },
+          {
+            "field": "delayed_cause",
+            "operator": "equals",
+            "value": "not_justifiable"
+          }
+        ]
+      },
+      "then": {
+        "decision": "partial_approve",
+        "action": "investigate_delay_and_may_reduce_payout"
+      },
+      "confidence": "LOW",
+      "source": "claim_guideline",
+      "source_ref": "REG012-理赔服务",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-R003"
+        ],
+        "relations": [
+          "regulates"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "accident_occurred",
+        "trigger_event": "E_timeout_report"
+      }
+    }
+  ]
+}

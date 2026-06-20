@@ -1,0 +1,19 @@
+# InsureQuery Runtime - Sprint 1 Dependencies
+# Core
+pydantic>=2.5.0
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Event Sourcing
+# (no external deps for Sprint 1 - pure Python implementation)
+
+# Async
+httpx>=0.26.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.26.0
+
+# Dev
+watchfiles>=0.21.0

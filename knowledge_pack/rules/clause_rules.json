@@ -1,0 +1,336 @@
+{
+  "meta": {
+    "domain": "clause",
+    "total": 8,
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "rule_id": "CI-001",
+      "domain": "clause",
+      "description": "条款明确列出该疾病的保障，且事故满足赔付条件 → 覆盖",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "in",
+            "value": "policy_covered_diseases"
+          },
+          {
+            "field": "diagnosis_confirmed",
+            "operator": "equals",
+            "value": "true"
+          }
+        ]
+      },
+      "then": {
+        "decision": "covered",
+        "action": "payout_per_coverage_terms"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-covered_diseases",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-D002",
+          "ENT-D003",
+          "ENT-D004",
+          "ENT-C002",
+          "ENT-C003"
+        ],
+        "relations": [
+          "covers"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "liability_check",
+        "trigger_event": "E_in_liability"
+      }
+    },
+    {
+      "rule_id": "CI-002",
+      "domain": "clause",
+      "description": "条款未列出该疾病 → 不覆盖",
+      "if": {
+        "conditions": [
+          {
+            "field": "disease",
+            "operator": "not_in",
+            "value": "policy_covered_diseases"
+          }
+        ]
+      },
+      "then": {
+        "decision": "not_covered",
+        "action": "disease_not_listed_in_clause"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-covered_diseases",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-D001",
+          "ENT-D002",
+          "ENT-D003",
+          "ENT-D004"
+        ],
+        "relations": [
+          "not_covered"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "liability_check",
+        "trigger_event": "E_not_liability"
+      }
+    },
+    {
+      "rule_id": "CI-003",
+      "domain": "clause",
+      "description": "免责条款涵盖该情形 → 不覆盖",
+      "if": {
+        "conditions": [
+          {
+            "field": "scenario",
+            "operator": "in",
+            "value": "policy_exclusions"
+          }
+        ]
+      },
+      "then": {
+        "decision": "not_covered",
+        "action": "scenario_in_exclusion_clause"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC001-C007",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P001",
+          "ENT-P002",
+          "ENT-P003"
+        ],
+        "relations": [
+          "excludes"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "exclusion_check",
+        "trigger_event": "E_excluded"
+      }
+    },
+    {
+      "rule_id": "CI-004",
+      "domain": "clause",
+      "description": "条款含有保证续保字样（如好医保第5.1条）→ 保证续保产品，续保条件为自动",
+      "if": {
+        "conditions": [
+          {
+            "field": "clause_text",
+            "operator": "contains",
+            "value": "保证续保"
+          },
+          {
+            "field": "guaranteed_years",
+            "operator": "gt",
+            "value": 0
+          }
+        ]
+      },
+      "then": {
+        "decision": "covered",
+        "action": "guaranteed_renewal_applies"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC002-C003",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-C006",
+          "ENT-P002"
+        ],
+        "relations": [
+          "contains"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "renewal_due",
+        "trigger_event": "E_renewal_auto"
+      }
+    },
+    {
+      "rule_id": "CI-005",
+      "domain": "clause",
+      "description": "条款对等待期的描述 → 等待期天数 + 意外不受限规则",
+      "if": {
+        "conditions": [
+          {
+            "field": "clause_text",
+            "operator": "contains",
+            "value": "等待期"
+          },
+          {
+            "field": "waiting_days",
+            "operator": "lte",
+            "value": 180
+          }
+        ]
+      },
+      "then": {
+        "decision": "partially_covered",
+        "action": "waiting_period_applies_except_accident"
+      },
+      "confidence": "HIGH",
+      "source": "regulatory_document",
+      "source_ref": "REG001-第二十三条",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-RL001",
+          "ENT-R001"
+        ],
+        "relations": [
+          "defines"
+        ]
+      },
+      "process_mapping": {
+        "process": "policy_lifecycle",
+        "node": "waiting_period",
+        "trigger_event": "E_waiting_start"
+      }
+    },
+    {
+      "rule_id": "CI-006",
+      "domain": "clause",
+      "description": "条款未明确覆盖门诊手术 → 门诊手术属于部分覆盖或需确认",
+      "if": {
+        "conditions": [
+          {
+            "field": "coverage_type",
+            "operator": "equals",
+            "value": "outpatient_surgery"
+          },
+          {
+            "field": "explicitly_covered",
+            "operator": "equals",
+            "value": "false"
+          }
+        ]
+      },
+      "then": {
+        "decision": "partially_covered",
+        "action": "manual_review_required"
+      },
+      "confidence": "MEDIUM",
+      "source": "insurance_product_clause",
+      "source_ref": "PRODUCT_CATALOG-outpatient_limit",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-C003",
+          "ENT-P001",
+          "ENT-P002"
+        ],
+        "relations": [
+          "contains"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "liability_check",
+        "trigger_event": "E_evaluate"
+      }
+    },
+    {
+      "rule_id": "CI-007",
+      "domain": "clause",
+      "description": "轻症赔付条款明确说明赔付比例和次数限制 → 按条款执行",
+      "if": {
+        "conditions": [
+          {
+            "field": "coverage_type",
+            "operator": "equals",
+            "value": "mild_illness"
+          },
+          {
+            "field": "payout_rate",
+            "operator": "lte",
+            "value": 0.3
+          },
+          {
+            "field": "max_claims",
+            "operator": "lte",
+            "value": 3
+          }
+        ]
+      },
+      "then": {
+        "decision": "covered",
+        "action": "mild_illness_payout_per_clause"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "DOC003-C003",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-C004",
+          "ENT-P003"
+        ],
+        "relations": [
+          "contains"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "claim_evaluated",
+        "trigger_event": "E_approve"
+      }
+    },
+    {
+      "rule_id": "CI-008",
+      "domain": "clause",
+      "description": "意外伤害导致身故/医疗费用 → 适用于意外伤害相关保障条款",
+      "if": {
+        "conditions": [
+          {
+            "field": "cause_type",
+            "operator": "equals",
+            "value": "accidental"
+          },
+          {
+            "field": "scenario",
+            "operator": "in",
+            "value": [
+              "death",
+              "disability",
+              "medical_expense"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "decision": "covered",
+        "action": "accident_related_benefit_per_clause"
+      },
+      "confidence": "HIGH",
+      "source": "insurance_product_clause",
+      "source_ref": "REG019-意外伤害定义",
+      "ontology_mapping": {
+        "entities": [
+          "ENT-P013",
+          "ENT-P014"
+        ],
+        "relations": [
+          "covers"
+        ]
+      },
+      "process_mapping": {
+        "process": "claim_lifecycle",
+        "node": "liability_check",
+        "trigger_event": "E_in_liability"
+      }
+    }
+  ]
+}

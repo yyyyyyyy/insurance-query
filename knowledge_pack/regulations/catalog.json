@@ -1,0 +1,379 @@
+{
+  "meta": {
+    "version": "1.0",
+    "total_regulations": 30
+  },
+  "regulations": [
+    {
+      "regulation_id": "REG001",
+      "title": "健康保险管理办法",
+      "agency": "银保监会(现金融监管总局)",
+      "doc_number": "银保监会令2019年第3号",
+      "effective_date": "2019-12-01",
+      "status": "现行有效",
+      "topics": [
+        "健康保险经营规则",
+        "保证续保",
+        "等待期",
+        "犹豫期",
+        "费率管理"
+      ],
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2019-12/04/content_5458542.htm"
+    },
+    {
+      "regulation_id": "REG002",
+      "title": "重大疾病保险疾病定义使用规范(2020修订版)",
+      "agency": "中国保险行业协会",
+      "effective_date": "2021-02-01",
+      "topics": [
+        "28种重度疾病",
+        "3种轻度疾病",
+        "甲状腺癌分级",
+        "疾病定义标准化"
+      ],
+      "source_url": "http://www.iachina.cn/art/2020/11/5/art_22_104708.html"
+    },
+    {
+      "regulation_id": "REG003",
+      "title": "中华人民共和国保险法(2015修正)",
+      "agency": "全国人大常委会",
+      "effective_date": "2015-04-24",
+      "topics": [
+        "保险合同",
+        "如实告知",
+        "理赔时效",
+        "保险人责任"
+      ],
+      "source_url": "https://www.gov.cn/zhengce/2015-04/24/content_2853454.htm"
+    },
+    {
+      "regulation_id": "REG004",
+      "title": "互联网保险业务监管办法",
+      "agency": "银保监会",
+      "doc_number": "银保监会令2020年第13号",
+      "effective_date": "2021-02-01",
+      "topics": [
+        "互联网保险经营",
+        "信息披露",
+        "消费者保护",
+        "持牌经营"
+      ],
+      "source_url": "https://www.gov.cn/zhengce/2020-12/14/content_5725858.htm"
+    },
+    {
+      "regulation_id": "REG005",
+      "title": "保险销售行为管理办法",
+      "agency": "金融监管总局",
+      "effective_date": "2024-03-01",
+      "topics": [
+        "销售前行为",
+        "销售中行为",
+        "销售后行为",
+        "产品分级",
+        "人员分级",
+        "禁止搭售"
+      ],
+      "source_url": "https://jrj.beijing.gov.cn/jrgzdt/202310/t20231008_3271571.html"
+    },
+    {
+      "regulation_id": "REG006",
+      "title": "保险公司偿付能力管理规定",
+      "agency": "银保监会",
+      "effective_date": "2021-03-01",
+      "topics": [
+        "偿付能力充足率",
+        "风险综合评级"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG007",
+      "title": "关于规范短期健康保险业务有关问题的通知",
+      "agency": "银保监会",
+      "effective_date": "2021-01-11",
+      "topics": [
+        "短期健康险",
+        "续保条款",
+        "不得保证续保"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG008",
+      "title": "关于长期医疗保险产品费率调整有关问题的通知",
+      "agency": "银保监会",
+      "effective_date": "2020-04-02",
+      "topics": [
+        "长期医疗险费率调整",
+        "触发条件",
+        "调整上限"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG009",
+      "title": "关于规范保险公司城市定制型商业医疗保险业务的通知",
+      "agency": "银保监会",
+      "effective_date": "2021-06-02",
+      "topics": [
+        "惠民保",
+        "城市定制医疗险"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG010",
+      "title": "保险公司管理规定",
+      "agency": "银保监会",
+      "effective_date": "2015-10-19",
+      "topics": [
+        "公司治理",
+        "分支机构",
+        "经营范围"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG011",
+      "title": "关于规范人身保险产品开发设计行为的通知(134号文)",
+      "agency": "银保监会",
+      "effective_date": "2017-05-12",
+      "topics": [
+        "年金领取",
+        "万能险设计",
+        "产品命名"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG012",
+      "title": "关于进一步规范保险理赔服务有关事项的通知",
+      "agency": "银保监会",
+      "effective_date": "2022-01-01",
+      "topics": [
+        "理赔时效",
+        "理赔材料",
+        "消费者告知"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG013",
+      "title": "关于加强金融消费者权益保护工作的指导意见",
+      "agency": "国务院办公厅",
+      "effective_date": "2015-11-13",
+      "topics": [
+        "财产安全权",
+        "知情权",
+        "自主选择权",
+        "公平交易权"
+      ],
+      "source_url": "https://www.gov.cn"
+    },
+    {
+      "regulation_id": "REG014",
+      "title": "银行保险机构消费者权益保护管理办法",
+      "agency": "银保监会",
+      "effective_date": "2023-03-01",
+      "topics": [
+        "消费者权益保护",
+        "信息披露",
+        "营销规范",
+        "投诉机制"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG015",
+      "title": "关于扩大商业健康保险个人所得税优惠政策适用产品范围的通知",
+      "agency": "金融监管总局",
+      "effective_date": "2023-08-01",
+      "topics": [
+        "税优健康险",
+        "个税扣除",
+        "产品范围扩大"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG016",
+      "title": "关于规范意外伤害保险经营有关问题的通知",
+      "agency": "银保监会",
+      "effective_date": "2022-01-01",
+      "topics": [
+        "意外伤害定义",
+        "职业分类",
+        "费率浮动"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG017",
+      "title": "保险保障基金管理办法",
+      "agency": "银保监会",
+      "effective_date": "2022-12-12",
+      "topics": [
+        "保险保障基金",
+        "保险公司破产",
+        "保单救济"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG018",
+      "title": "关于规范健康保险委托管理业务有关事项的通知",
+      "agency": "银保监会",
+      "effective_date": "2020-02-11",
+      "topics": [
+        "健康管理",
+        "委托管理",
+        "企业补充医疗"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG019",
+      "title": "关于实施保险公司偿付能力监管规则(Ⅱ)的通知",
+      "agency": "银保监会",
+      "effective_date": "2022-01-01",
+      "topics": [
+        "偿二代二期",
+        "风险资本",
+        "最低资本"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG020",
+      "title": "保险资产负债管理监管规则",
+      "agency": "银保监会",
+      "effective_date": "2021-01-01",
+      "topics": [
+        "资产负债匹配",
+        "久期管理",
+        "利率风险"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG021",
+      "title": "个人税收递延型商业养老保险业务管理暂行办法",
+      "agency": "银保监会",
+      "effective_date": "2018-05-01",
+      "topics": [
+        "税延养老",
+        "个人养老金",
+        "第三支柱"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG022",
+      "title": "关于规范保险公司参与长期护理保险制度试点服务的通知",
+      "agency": "银保监会",
+      "effective_date": "2020-05-01",
+      "topics": [
+        "长期护理险",
+        "失能等级评估",
+        "护理服务"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG023",
+      "title": "关于规范银行代理保险业务的通知",
+      "agency": "银保监会",
+      "effective_date": "2020-01-01",
+      "topics": [
+        "银保渠道",
+        "销售规范",
+        "双录要求"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG024",
+      "title": "关于推进商业健康保险高质量发展的指导意见",
+      "agency": "金融监管总局",
+      "effective_date": "2024-01-01",
+      "topics": [
+        "健康险创新",
+        "多层次保障",
+        "长期护理险"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG025",
+      "title": "保险公司城乡居民大病保险业务管理办法",
+      "agency": "银保监会",
+      "effective_date": "2021-05-17",
+      "topics": [
+        "大病保险",
+        "政府合作",
+        "保障方案"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG026",
+      "title": "关于规范人身保险公司产品开发设计行为的通知(2023)",
+      "agency": "金融监管总局",
+      "effective_date": "2023-01-01",
+      "topics": [
+        "产品命名规范",
+        "保障功能",
+        "精算基础"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG027",
+      "title": "健康保险管理相关通知(2024)",
+      "agency": "金融监管总局",
+      "effective_date": "2024-07-12",
+      "topics": [
+        "商业健康险保障属性",
+        "创新产品",
+        "个税优惠扩大"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG028",
+      "title": "关于保险公司开展老年人住房反向抵押养老保险试点的指导意见",
+      "agency": "银保监会",
+      "effective_date": "2018-08-01",
+      "topics": [
+        "以房养老",
+        "老年人保障",
+        "养老保险创新"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG029",
+      "title": "保险公司承办城乡居民大病保险业务有关事项的通知",
+      "agency": "银保监会",
+      "effective_date": "2021-05-01",
+      "topics": [
+        "大病保险",
+        "经营资质",
+        "盈亏调节"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    },
+    {
+      "regulation_id": "REG030",
+      "title": "保险专业代理机构监管规定",
+      "agency": "银保监会",
+      "effective_date": "2015-10-19",
+      "topics": [
+        "代理机构",
+        "资质管理",
+        "销售行为"
+      ],
+      "source_url": "https://www.nfra.gov.cn"
+    }
+  ]
+}
