@@ -308,7 +308,7 @@ class TestEligibilityCheckTool:
 
     def test_age_too_low(self):
         t = EligibilityCheckTool()
-        r = t.run({"product_id": "P003", "age": 15})
+        r = t.run({"product_id": "P012", "age": 15})
         assert r.data["eligible"] is False
 
     def test_unknown_product(self):
