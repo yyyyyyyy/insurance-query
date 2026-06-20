@@ -3,6 +3,9 @@ Hybrid Retrieval Engine — BM25 + Vector + Ontology-Guided.
 
 Query Flow:
   User Query -> Intent -> Ontology Expansion -> Hybrid Retrieval -> Evidence Ranking
+
+Sprint 6: Integrated ChromaDB (vector acceleration) and sentence-transformers
+embeddings with automatic fallback to TF-IDF.
 """
 
 from __future__ import annotations
@@ -58,12 +61,19 @@ class BM25Scorer:
         return [t for t in re.findall(r'[\u4e00-\u9fff]{1,3}|[a-zA-Z]+', text.lower()) if len(t) >= 1]
 
 class HybridRetriever:
-    """Hybrid retrieval: BM25 (keyword) + Vector (semantic) + Ontology (knowledge-guided)."""
-    def __init__(self, chunk_store: ChunkStore, embedding_gen: EmbeddingGenerator,
-                 ontology: Optional[OntologyGraph] = None):
+    """Hybrid retrieval: BM25 (keyword) + Vector (semantic) + Ontology (knowledge-guided).
+
+    Sprint 6: Supports ChromaDB-accelerated vector search. Falls back to
+    brute-force TF-IDF similarity when ChromaDB is unavailable.
+    """
+
+    def __init__(self, chunk_store: ChunkStore, embedding_gen,
+                 ontology: Optional[OntologyGraph] = None,
+                 vector_store=None):
         self.chunk_store = chunk_store
         self.embedding_gen = embedding_gen
         self.ontology = ontology
+        self.vector_store = vector_store  # Optional ChromaVectorStore
         self.bm25 = BM25Scorer()
         self._chunk_list: List[Chunk] = []
         self._fitted = False
@@ -72,8 +82,37 @@ class HybridRetriever:
         self._chunk_list = self.chunk_store.all_chunks()
         texts = [c.content for c in self._chunk_list]
         self.bm25.fit(texts)
-        if not self.embedding_gen._fitted:
-            self.embedding_gen.fit(texts)
+
+        # Fit embedding if needed (TF-IDF fallback requires fitting)
+        if hasattr(self.embedding_gen, '_fitted'):
+            if not self.embedding_gen._fitted:
+                self.embedding_gen.fit(texts)
+        else:
+            # EmbeddingProvider — try fit if available
+            if hasattr(self.embedding_gen, 'fit'):
+                self.embedding_gen.fit(texts)
+
+        # Index chunks in ChromaDB vector store if available
+        if self.vector_store and self.vector_store.enabled and self._chunk_list:
+            embed = self.embedding_gen
+            embeddings = []
+            if hasattr(embed, 'encode_batch_as_lists'):
+                embeddings = embed.encode_batch_as_lists(texts)
+            else:
+                for chunk in self._chunk_list:
+                    if chunk.embedding is not None:
+                        embeddings.append(chunk.embedding.tolist())
+                    else:
+                        vec = embed.encode(chunk.content)
+                        embeddings.append(vec.tolist())
+
+            if embeddings:
+                added = self.vector_store.add_chunks(self._chunk_list, embeddings)
+                if added > 0:
+                    import logging
+                    logging.getLogger(__name__).info(
+                        "Indexed %d chunks in ChromaDB", added)
+
         self._fitted = True
 
     def retrieve(self, query: str, top_k: int = 10,
@@ -93,10 +132,17 @@ class HybridRetriever:
                 entities = self.ontology.lookup(entity_name)
                 for e in entities:
                     ontology_entities.add(e.entity_id)
-                    # Also add related entities via expansion
                     expanded = self.ontology.expand_context([e.entity_id], max_depth=1, max_results=10)
                     for ee in expanded:
                         ontology_entities.add(ee.entity_id)
+
+        # Try ChromaDB-accelerated vector search first
+        chroma_results: Dict[str, float] = {}
+        if self.vector_store and self.vector_store.enabled:
+            query_vec_list = query_vec.tolist() if isinstance(query_vec, np.ndarray) else query_vec
+            chroma_hits = self.vector_store.search(query_vec_list, top_k=top_k * 3)
+            for cid, score, _ in chroma_hits:
+                chroma_results[cid] = score
 
         scores = []
         for i, chunk in enumerate(self._chunk_list):
@@ -107,8 +153,21 @@ class HybridRetriever:
                     continue
 
             bm25_score = self.bm25.score(query, i)
-            chunk_vec = self.embedding_gen.encode(chunk.content) if chunk.embedding is None else chunk.embedding
-            vector_score = self.embedding_gen.similarity(query_vec, chunk_vec)
+
+            # Vector score: prefer ChromaDB pre-computed score, fallback to brute-force
+            if chunk.chunk_id in chroma_results:
+                vector_score = chroma_results[chunk.chunk_id]
+            else:
+                chunk_vec = chunk.embedding if chunk.embedding is not None else self.embedding_gen.encode(chunk.content)
+                if hasattr(self.embedding_gen, 'similarity'):
+                    vector_score = self.embedding_gen.similarity(query_vec, chunk_vec)
+                else:
+                    from sklearn.metrics.pairwise import cosine_similarity
+                    a = query_vec.reshape(1, -1)
+                    b = chunk_vec.reshape(1, -1)
+                    vector_score = float(cosine_similarity(a, b)[0][0])
+
+            # Ontology boost
             onto_score = 0.0
             if ontology_entities and hasattr(chunk, 'metadata'):
                 linked_entities = chunk.metadata.get('entity_links', [])

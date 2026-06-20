@@ -6,6 +6,10 @@ ARCHITECTURE:
 
 SPRINT 2 CHANGE: Replaced mock execute_tool() with ToolDispatcher + ToolRegistry.
 All tools are now real deterministic implementations per 06-Tool-Contracts.md.
+
+DEPRECATED: This engine has been superseded by MultiAgentEngine
+(runtime/agents/orchestrator.py). Use MultiAgentEngine for all new code.
+InsureQueryEngine will be removed in a future version.
 """
 
 from __future__ import annotations
@@ -37,6 +41,8 @@ class InsureQueryEngine:
 
     def __init__(self, event_store: Optional[EventStore] = None,
                  dispatcher: Optional[ToolDispatcher] = None):
+        import warnings
+        warnings.warn("InsureQueryEngine is deprecated, use MultiAgentEngine instead", DeprecationWarning, stacklevel=2)
         self.event_store = event_store or EventStore()
         self.dispatcher = dispatcher or ToolDispatcher(create_default_registry())
 
@@ -126,103 +132,13 @@ class InsureQueryEngine:
         return [e.to_dict() for e in self.event_store.get_session_events(session_id)]
 
 
+# Deprecated: _compose_answer, _format_citations, _compute_confidence are now in runtime.llm.answer.
+# Kept here for backward compatibility — import from runtime.llm.answer for new code.
+from runtime.llm.answer import _format_citations, _compute_confidence  # noqa: F811
+
 def _compose_answer(query_text, intent_type, tool_outputs, evidence):
-    lines = [f"查询: {query_text}", ""]
-
-    if intent_type == "product_comparison":
-        comp = tool_outputs.get("compare", {}).get("comparison", {})
-        if comp:
-            lines.append("## 产品对比结果")
-            products = comp.get("products", [])
-            if products:
-                names = " vs ".join(p["name"] for p in products)
-                lines.append(f"对比产品: {names}")
-                lines.append("")
-            for row in comp.get("rows", []):
-                dim = row["dimension"]
-                unit = row.get("unit", "")
-                vals = []
-                for p in (comp.get("products") or []):
-                    pid = p["id"]
-                    val = row.get(pid)
-                    if val is not None:
-                        vals.append(f"{p['name']}: {val}{unit}")
-                lines.append(f"- **{dim}**: {' | '.join(vals)}")
-
-    elif intent_type == "coverage_question":
-        lines.append("## 保障范围查询结果")
-        doc_data = tool_outputs.get("document_search", {})
-        for chunk in doc_data.get("chunks", []):
-            lines.append(f"> [{chunk.get('clause', '')}] {chunk.get('content', '')}")
-            lines.append("")
-
-    elif intent_type == "regulation_lookup":
-        reg_data = tool_outputs.get("regulation_search", {})
-        for reg in reg_data.get("regulations", []):
-            lines.append(f"### {reg['title']}")
-            for chunk in reg.get("chunks", []):
-                lines.append(f"- **{chunk.get('clause', '')}**: {chunk.get('content', '')}")
-            lines.append("")
-
-    elif intent_type == "price_inquiry":
-        lines.append("## 价格查询")
-        prod_data = tool_outputs.get("product_search", {})
-        attr_data = tool_outputs.get("attribute_extraction", {}).get("results", {})
-        for prod in prod_data.get("products", []):
-            attrs = attr_data.get(prod["product_id"], {})
-            prem = attrs.get("premium_reference", {})
-            lines.append(f"- **{prod['name']}**: 年保费 {prem.get('age_30', 'N/A')}元(30岁), "
-                         f"范围 {attrs.get('premium_min', '?')}-{attrs.get('premium_max', '?')}元/年")
-
-    elif intent_type == "claim_process":
-        doc_data = tool_outputs.get("document_search", {})
-        for chunk in doc_data.get("chunks", []):
-            lines.append(chunk.get("content", ""))
-
-    elif intent_type == "eligibility_check":
-        lines.append("## 投保资格")
-        eligibility_data = tool_outputs.get("eligibility_check", {})
-        lines.append(f"结果: {'符合' if eligibility_data.get('eligible') else '不符合'}")
-        for reason in eligibility_data.get("reasons", []):
-            lines.append(f"- {reason}")
-
-    else:
-        lines.append("## 查询结果")
-        prod_data = tool_outputs.get("product_search", {})
-        for prod in prod_data.get("products", []):
-            lines.append(f"- {prod['name']} ({prod['product_type']}) — {prod['company']}")
-
-    if evidence:
-        lines.append("")
-        lines.append("---")
-        srcs = set()
-        for e in evidence:
-            src = e.get("source_type", e.get("source", ""))
-            if src:
-                srcs.add(src)
-        lines.append(f"*本回答基于 {len(evidence)} 条证据*")
-
-    return "\n".join(lines)
-
-
-def _format_citations(evidence):
-    citations = []
-    seen = set()
-    for item in evidence:
-        key = str(item.get("document_id") or item.get("product_id") or
-                  item.get("chunk_id") or item.get("source", ""))
-        if key not in seen:
-            seen.add(key)
-            citations.append({
-                "source": item.get("source_type", item.get("source", "unknown")),
-                "reference": key,
-                "content": item.get("content", "")[:100],
-                "clause": item.get("clause", ""),
-            })
-    return citations
-
-
-def _compute_confidence(intent_result, evidence):
-    intent_conf = intent_result.get("confidence", 0.5)
-    evidence_factor = min(len(evidence) / 5.0, 1.0) if evidence else 0.3
-    return round(intent_conf * 0.4 + evidence_factor * 0.6, 2)
+    """Deprecated: use runtime.llm.answer._template_answer directly."""
+    import warnings
+    warnings.warn("_compose_answer is deprecated, use _template_answer in runtime.llm.answer", DeprecationWarning, stacklevel=2)
+    from runtime.llm.answer import _template_answer
+    return _template_answer(query_text, intent_type, tool_outputs, evidence)

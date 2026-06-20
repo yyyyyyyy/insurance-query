@@ -55,11 +55,11 @@ class AgentBus:
         self._agents: Dict[str, BaseAgent] = {}
         self._log: List[AgentMessage] = []
     def register(self, a: BaseAgent): self._agents[a.name] = a
-    def send(self, msg: AgentMessage) -> AgentMessage:
+    def send(self, msg: AgentMessage, ctx: Optional["AgentContext"] = None) -> AgentMessage:
         self._log.append(msg)
         a = self._agents.get(msg.recipient)
         if not a: return AgentMessage(str(uuid.uuid4()),msg.recipient,msg.sender,"error",{"error":f"Agent not found: {msg.recipient}"})
-        return a.handle(msg, None)
+        return a.handle(msg, ctx)
     def get_agent(self, n): return self._agents.get(n)
     def list_agents(self): return list(self._agents.keys())
     def agent_statuses(self): return {n:a.status_dict() for n,a in self._agents.items()}

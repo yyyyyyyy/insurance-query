@@ -1,13 +1,17 @@
 """
 Structured Knowledge Store — Embedded data for Sprint 2 tools.
 
-Sprint 3 will replace with full knowledge layer (ingestion + vector DB).
-For Sprint 2, this provides real deterministic data that tools query against.
+Products are loaded from knowledge_pack/products/catalog.json at import time.
+Falls back to 4 hardcoded products if the JSON file is unavailable.
 """
 
 from typing import Any, Dict, List, Optional
+import logging
 
-PRODUCT_CATALOG: List[Dict[str, Any]] = [
+logger = logging.getLogger(__name__)
+
+# Legacy fallback (4 products) — used when catalog.json is unavailable
+_LEGACY_PRODUCT_CATALOG: List[Dict[str, Any]] = [
     {
         "product_id": "P001", "name": "e生保·百万医疗", "product_type": "医疗险",
         "company": "平安健康保险", "company_short": "平安健康",
@@ -66,3 +70,20 @@ PRODUCT_CATALOG: List[Dict[str, Any]] = [
         "special_services": ["在线问诊"],
     },
 ]
+
+
+def _load_products() -> List[Dict[str, Any]]:
+    """Load products from catalog.json, with fallback to legacy data."""
+    try:
+        from runtime.tools.data_loader import load_product_catalog
+        products = load_product_catalog()
+        if products and len(products) > 0:
+            logger.info("Loaded %d products from catalog.json", len(products))
+            return products
+    except Exception as exc:
+        logger.warning("Failed to load catalog.json: %s. Using legacy data.", exc)
+    logger.info("Using legacy PRODUCT_CATALOG (%d products)", len(_LEGACY_PRODUCT_CATALOG))
+    return list(_LEGACY_PRODUCT_CATALOG)
+
+
+PRODUCT_CATALOG: List[Dict[str, Any]] = _load_products()

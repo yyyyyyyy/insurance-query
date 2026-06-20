@@ -1,19 +1,24 @@
-# InsureQuery Runtime - Sprint 1 Dependencies
+# InsureQuery Runtime - Dependencies
 # Core
 pydantic>=2.5.0
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-
-# Event Sourcing
-# (no external deps for Sprint 1 - pure Python implementation)
-
-# Async
 httpx>=0.26.0
+
+# Knowledge Layer
+numpy>=1.24.0
+scikit-learn>=1.3.0
+networkx>=3.2
+
+# Vector Database (Sprint 6)
+chromadb>=0.5.0
+
+# Embedding (Sprint 6)
+sentence-transformers>=3.0.0
 
 # Testing
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
-httpx>=0.26.0
 
 # Dev
 watchfiles>=0.21.0

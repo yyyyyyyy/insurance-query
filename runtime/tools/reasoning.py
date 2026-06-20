@@ -8,15 +8,30 @@ from runtime.tools.data import PRODUCT_CATALOG
 
 
 COMPARE_DIMENSIONS = {
-    "waiting_period": {"field": "waiting_period_days", "unit": "天"},
-    "deductible": {"field": "deductible", "unit": "元"},
-    "coverage_limit": {"field": "coverage_limit", "unit": "元"},
-    "critical_illness_limit": {"field": "critical_illness_limit", "unit": "元"},
-    "guaranteed_renewal": {"field": "is_guaranteed_renewal", "unit": ""},
-    "outpatient_coverage": {"field": "outpatient_limit", "unit": "元"},
-    "premium_30": {"field": "premium_reference.age_30", "unit": "元/年"},
-    "max_age": {"field": "eligibility.max_age", "unit": "岁"},
-    "premium_range": {"fields": ["premium_min", "premium_max"], "unit": "元/年"},
+    # Core dimensions
+    "waiting_period": {"field": "waiting_period_days", "unit": "天", "category": "保障条款"},
+    "deductible": {"field": "deductible", "unit": "元", "category": "费用相关"},
+    "coverage_limit": {"field": "coverage_limit", "unit": "元", "category": "保障额度"},
+    "critical_illness_limit": {"field": "critical_illness_limit", "unit": "元", "category": "保障额度"},
+    "guaranteed_renewal": {"field": "is_guaranteed_renewal", "unit": "", "category": "续保条款",
+                           "format": lambda v: "保证续保" if v else "不保证续保"},
+    "guaranteed_renewal_years": {"field": "guaranteed_renewal_years", "unit": "年", "category": "续保条款"},
+    "outpatient_coverage": {"field": "outpatient_limit", "unit": "元", "category": "保障额度"},
+    "premium_30": {"field": "premium_reference.age_30", "unit": "元/年", "category": "保费"},
+    "premium_40": {"field": "premium_reference.age_40", "unit": "元/年", "category": "保费"},
+    "premium_50": {"field": "premium_reference.age_50", "unit": "元/年", "category": "保费"},
+    "max_age": {"field": "eligibility.max_age", "unit": "岁", "category": "投保条件"},
+    "min_age": {"field": "eligibility.min_age", "unit": "岁", "category": "投保条件"},
+    "premium_min": {"field": "premium_min", "unit": "元/年", "category": "保费"},
+    "premium_max": {"field": "premium_max", "unit": "元/年", "category": "保费"},
+    "premium_range": {"fields": ["premium_min", "premium_max"], "unit": "元/年", "category": "保费"},
+    # Extended dimensions from catalog
+    "company": {"field": "company", "unit": "", "category": "基本信息"},
+    "product_type": {"field": "product_type", "unit": "", "category": "基本信息"},
+    "health_check": {"field": "eligibility.health_check_required", "unit": "", "category": "投保条件",
+                     "format": lambda v: "需要健康告知" if v else "无需健康告知"},
+    "covered_diseases_count": {"field": "covered_diseases", "unit": "种", "category": "保障范围",
+                                "format": lambda v: len(v) if isinstance(v, list) else (len(v) if isinstance(v, dict) else 0)},
 }
 
 
@@ -53,9 +68,16 @@ class CompareTool(BaseTool[CompareInput, CompareOutput]):
             dim_config = COMPARE_DIMENSIONS.get(dim)
             if not dim_config:
                 continue
-            row = {"dimension": dim, "unit": dim_config.get("unit", "")}
+            row = {"dimension": dim, "unit": dim_config.get("unit", ""),
+                   "category": dim_config.get("category", "")}
+            fmt_fn = dim_config.get("format")
             for p in products:
                 val = self._get_value(p, dim_config)
+                if fmt_fn and val is not None:
+                    try:
+                        val = fmt_fn(val)
+                    except Exception:
+                        pass
                 row[p["product_id"]] = val
                 row[f"{p['product_id']}_name"] = p["name"]
             comparison_rows.append(row)

@@ -325,6 +325,25 @@ Without API key, the system uses rule-based intent + template answers (existing 
 
 Check LLM status: `curl http://localhost:8000/health`
 
+### Security Notice
+
+**The `.env` file contains your API credentials and MUST be excluded from version control.**
+
+The `.gitignore` file already includes `.env`. Verify this before making any commits:
+
+```bash
+git ls-files .env  # Should return nothing
+```
+
+**Best practices:**
+
+- Rotate your API key periodically through the provider's dashboard.
+- Use environment variables or a secret manager (e.g., Vault, AWS Secrets Manager) in production deployments.
+- Never share your `.env` file or commit it to public repositories.
+- After cloning a fresh copy of this repository, always run `cp .env.example .env` to create a clean environment file — do not reuse a `.env` from another environment.
+
+If you suspect your API key has been exposed, revoke it immediately in your provider's dashboard and generate a new one.
+
 ---
 
 ## Documentation

@@ -6,6 +6,11 @@ Integrates: Ingestion → Ontology → Hybrid Retrieval → Tool Execution → A
 Pipeline:
   User Query → Intent → Ontology Expansion → Hybrid Retrieval
   → Tools (consume ontology + evidence) → Evidence Graph → Answer
+
+DEPRECATED: This engine has been superseded by MultiAgentEngine
+(runtime/agents/orchestrator.py), which now includes EventStore + full evaluation
+event tracing. Use MultiAgentEngine for all new code.
+KnowledgeEngine will be removed in a future version.
 """
 
 from __future__ import annotations
@@ -46,6 +51,8 @@ class KnowledgeEngine:
 
     def __init__(self, event_store: Optional[EventStore] = None,
                  dispatcher: Optional[ToolDispatcher] = None):
+        import warnings
+        warnings.warn("KnowledgeEngine is deprecated, use MultiAgentEngine instead", DeprecationWarning, stacklevel=2)
         self.event_store = event_store or EventStore()
         self.dispatcher = dispatcher or ToolDispatcher(create_default_registry())
 
