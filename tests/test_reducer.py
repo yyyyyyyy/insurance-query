@@ -8,7 +8,6 @@ Covers:
 - Replay capability
 """
 
-import pytest
 
 from runtime.engine.event_store import (
     EventStore,

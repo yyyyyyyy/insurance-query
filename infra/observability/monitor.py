@@ -1,7 +1,9 @@
 """Observability System — Structured logging, metrics, system health dashboard."""
 
 from __future__ import annotations
-import time, json, logging
+import time
+import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from collections import defaultdict
@@ -11,8 +13,11 @@ logger = logging.getLogger("insurequery")
 
 @dataclass
 class StageMetrics:
-    name: str; duration_ms: float = 0.0; success: bool = True
-    error: Optional[str] = None; metadata: Dict[str, Any] = field(default_factory=dict)
+    name: str
+    duration_ms: float = 0.0
+    success: bool = True
+    error: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 class SystemMetrics:
     """Aggregated system performance metrics."""
@@ -21,22 +26,28 @@ class SystemMetrics:
         self._tool_failures: Dict[str, int] = defaultdict(int)
         self._tool_successes: Dict[str, int] = defaultdict(int)
         self._hallucination_scores: List[float] = []
-        self._retrieval_hits: int = 0; self._retrieval_misses: int = 0
-        self._query_count: int = 0; self._total_latency: float = 0.0
+        self._retrieval_hits: int = 0
+        self._retrieval_misses: int = 0
+        self._query_count: int = 0
+        self._total_latency: float = 0.0
         self._evaluation_scores: List[float] = []
         self._last_n_traces: List[Dict[str, Any]] = []
 
     def record_query(self, latency_ms: float, trace_id: str):
-        self._query_count += 1; self._total_latency += latency_ms
+        self._query_count += 1
+        self._total_latency += latency_ms
         self._last_n_traces.append({"trace_id":trace_id,"latency_ms":latency_ms,"ts":time.time()})
-        if len(self._last_n_traces) > 50: self._last_n_traces.pop(0)
+        if len(self._last_n_traces) > 50:
+            self._last_n_traces.pop(0)
 
     def record_stage(self, stage: str, duration_ms: float):
         self._latencies[stage].append(duration_ms)
 
     def record_tool(self, tool_name: str, success: bool):
-        if success: self._tool_successes[tool_name] += 1
-        else: self._tool_failures[tool_name] += 1
+        if success:
+            self._tool_successes[tool_name] += 1
+        else:
+            self._tool_failures[tool_name] += 1
 
     def record_hallucination(self, score: float):
         self._hallucination_scores.append(score)
@@ -45,8 +56,10 @@ class SystemMetrics:
         self._evaluation_scores.append(score)
 
     def record_retrieval(self, hit: bool):
-        if hit: self._retrieval_hits += 1
-        else: self._retrieval_misses += 1
+        if hit:
+            self._retrieval_hits += 1
+        else:
+            self._retrieval_misses += 1
 
     def snapshot(self) -> Dict[str, Any]:
         return {
@@ -74,9 +87,12 @@ class ObservabilityLayer:
     def log_event(self, event_type: str, payload: Dict[str, Any], level: str = "info"):
         entry = {"ts":time.time(),"type":event_type,"payload":payload,"level":level}
         self._event_log.append(entry)
-        if level == "error": logger.error(f"[{event_type}] {payload}")
-        elif level == "warn": logger.warning(f"[{event_type}] {payload}")
-        else: logger.info(f"[{event_type}] {json.dumps(payload,ensure_ascii=False)[:200]}")
+        if level == "error":
+            logger.error(f"[{event_type}] {payload}")
+        elif level == "warn":
+            logger.warning(f"[{event_type}] {payload}")
+        else:
+            logger.info(f"[{event_type}] {json.dumps(payload,ensure_ascii=False)[:200]}")
 
     def trace_pipeline(self, trace_id: str, stages: List[StageMetrics]):
         for s in stages:

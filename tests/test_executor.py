@@ -8,17 +8,9 @@ Covers:
 - Unknown tools return error
 """
 
-import pytest
 
 from runtime.engine.executor import (
     execute_tool,
-    execute_product_search,
-    execute_document_search,
-    execute_regulation_search,
-    execute_compare,
-    execute_attribute_extraction,
-    execute_entity_lookup,
-    execute_relation_traversal,
     TOOL_EXECUTORS,
 )
 

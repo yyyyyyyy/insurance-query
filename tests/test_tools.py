@@ -7,7 +7,7 @@ from runtime.tools.retrieval import ProductSearchTool, DocumentSearchTool, Regul
 from runtime.tools.extraction import AttributeExtractionTool, ClauseParserTool
 from runtime.tools.reasoning import CompareTool, EligibilityCheckTool
 from runtime.tools.graph import EntityLookupTool, RelationTraversalTool
-from runtime.evidence.contract import EvidenceItem, SourceType, EvidenceStatus
+from runtime.evidence.contract import EvidenceItem, SourceType
 
 
 # ============================================================

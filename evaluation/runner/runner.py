@@ -4,17 +4,21 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
-from evaluation.trace.capture import TraceCapture, QueryTrace
-from evaluation.engine.scorer import EvaluationEngine, EvaluationResult
-from evaluation.hallucination.detector import HallucinationDetector, HallucinationReport
-from evaluation.feedback.loop import FeedbackLoop, FeedbackSignal
+from evaluation.trace.capture import TraceCapture
+from evaluation.engine.scorer import EvaluationEngine
+from evaluation.hallucination.detector import HallucinationDetector
+from evaluation.feedback.loop import FeedbackLoop
 from evaluation.datasets.samples import EvalSample, EVAL_DATASET
 from knowledge.engine import KnowledgeEngine
 
 @dataclass
 class BatchEvalResult:
-    run_id: str; total_samples: int; passed: int; failed: int
-    avg_score: float; avg_latency_ms: float
+    run_id: str
+    total_samples: int
+    passed: int
+    failed: int
+    avg_score: float
+    avg_latency_ms: float
     per_sample: List[Dict[str, Any]] = field(default_factory=list)
     system_feedback: List[Dict[str, Any]] = field(default_factory=list)
     def to_dict(self) -> Dict[str, Any]:
@@ -35,8 +39,12 @@ class EvalRunner:
         import uuid
         samples = samples or EVAL_DATASET
         run_id = f"RUN-{uuid.uuid4().hex[:8]}"
-        per_sample = []; scores = []; latencies = []; all_feedback = []
-        passed = 0; failed = 0
+        per_sample = []
+        scores = []
+        latencies = []
+        all_feedback = []
+        passed = 0
+        failed = 0
 
         for sample in samples:
             try:
@@ -57,8 +65,10 @@ class EvalRunner:
 
                 ok = (eval_result.total_score >= 50 and
                       hal_report.severity in ("NONE","LOW"))
-                if ok: passed += 1
-                else: failed += 1
+                if ok:
+                    passed += 1
+                else:
+                    failed += 1
 
                 all_feedback.extend(f.to_dict() for f in feedback)
                 per_sample.append({

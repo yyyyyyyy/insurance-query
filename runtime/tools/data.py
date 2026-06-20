@@ -5,7 +5,7 @@ Products are loaded from knowledge_pack/products/catalog.json at import time.
 Falls back to 4 hardcoded products if the JSON file is unavailable.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import logging
 
 logger = logging.getLogger(__name__)

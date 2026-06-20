@@ -9,7 +9,6 @@ Covers:
 - EventStore replay
 """
 
-import pytest
 
 from runtime.engine.event_store import (
     EventStore,

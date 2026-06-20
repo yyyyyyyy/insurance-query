@@ -11,13 +11,15 @@ Dimensions:
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from evaluation.trace.capture import QueryTrace
 from evaluation.datasets.samples import EvalSample
 
 @dataclass
 class DimensionScore:
-    name: str; score: float; max_score: float
+    name: str
+    score: float
+    max_score: float
     details: Dict[str, Any] = field(default_factory=dict)
     failure_points: List[str] = field(default_factory=list)
     def normalized(self) -> float:
@@ -25,7 +27,9 @@ class DimensionScore:
 
 @dataclass
 class EvaluationResult:
-    trace_id: str; session_id: str; total_score: float
+    trace_id: str
+    session_id: str
+    total_score: float
     dimensions: Dict[str, DimensionScore] = field(default_factory=dict)
     breakdown: Dict[str, float] = field(default_factory=dict)
     failure_points: List[str] = field(default_factory=list)
@@ -72,7 +76,9 @@ class EvaluationEngine:
             failure_points=failures, diagnosis=diagnosis)
 
     def _score_retrieval(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0; failures = []; details = {}
+        score = 5.0
+        failures = []
+        details = {}
         ev_count = trace.evidence_count
         rr = trace.retrieval_results
 
@@ -99,11 +105,14 @@ class EvaluationEngine:
         return DimensionScore("retrieval", max(0, score), 5.0, details, failures)
 
     def _score_tools(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0; failures = []; details = {}
+        score = 5.0
+        failures = []
+        details = {}
         tc = trace.tool_call_count
 
         if tc == 0:
-            score -= 3.0; failures.append("No tools called")
+            score -= 3.0
+            failures.append("No tools called")
         elif tc < 2:
             score -= 0.5
 
@@ -119,13 +128,17 @@ class EvaluationEngine:
         return DimensionScore("tool", max(0, score), 5.0, details, failures)
 
     def _score_reasoning(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0; failures = []; details = {}
+        score = 5.0
+        failures = []
+        details = {}
         plan = trace.plan_steps
 
         if not plan:
-            score -= 3.0; failures.append("No execution plan")
+            score -= 3.0
+            failures.append("No execution plan")
         elif len(plan) < 2:
-            score -= 1.0; failures.append("Plan too short")
+            score -= 1.0
+            failures.append("Plan too short")
 
         details["plan_length"] = len(plan)
 
@@ -136,7 +149,9 @@ class EvaluationEngine:
         return DimensionScore("reasoning", max(0, score), 5.0, details, failures)
 
     def _score_answer(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0; failures = []; details = {}
+        score = 5.0
+        failures = []
+        details = {}
         answer = trace.final_answer
         answer_text = answer.get("text", "") if answer else ""
         ev_count = trace.evidence_count
@@ -174,7 +189,9 @@ class EvaluationEngine:
         return DimensionScore("answer", max(0, score), 5.0, details, failures)
 
     def _score_efficiency(self, trace: QueryTrace) -> DimensionScore:
-        score = 5.0; failures = []; details = {}
+        score = 5.0
+        failures = []
+        details = {}
         latency = trace.total_latency_ms
         tc = trace.tool_call_count
 
@@ -182,11 +199,13 @@ class EvaluationEngine:
         details["tool_calls"] = tc
 
         if latency > 5000:
-            score -= 2.0; failures.append("High latency")
+            score -= 2.0
+            failures.append("High latency")
         elif latency > 2000:
             score -= 1.0
         if tc > 10:
-            score -= 1.0; failures.append("Excessive tool calls")
+            score -= 1.0
+            failures.append("Excessive tool calls")
 
         return DimensionScore("efficiency", max(0, score), 5.0, details, failures)
 

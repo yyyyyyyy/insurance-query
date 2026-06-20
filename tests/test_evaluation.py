@@ -1,6 +1,5 @@
 """Sprint 4 Evaluation System Tests — Trace, Eval Engine, Hallucination, Feedback."""
 
-import pytest
 from evaluation.trace.capture import TraceCapture, QueryTrace
 from evaluation.engine.scorer import EvaluationEngine, EvaluationResult, DimensionScore
 from evaluation.hallucination.detector import HallucinationDetector, HallucinationReport, Violation

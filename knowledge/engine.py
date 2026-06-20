@@ -18,7 +18,6 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from knowledge.ingestion.pipeline import ChunkStore, EmbeddingGenerator, ingest_text_document
-from knowledge.ontology.graph import OntologyGraph
 from knowledge.ontology.builder import build_insurance_ontology
 from knowledge.evidence.index import EvidenceIndex
 from knowledge.retrieval.engine import HybridRetriever
@@ -213,7 +212,6 @@ class KnowledgeEngine:
 
     def _run_evaluation(self, session_id, query_text, answer, evidence, onto_matches):
         """Run full evaluation pipeline after answer generation (SPRINT 4)."""
-        import time
         from evaluation.trace.capture import TraceCapture
         from evaluation.engine.scorer import EvaluationEngine
         from evaluation.hallucination.detector import HallucinationDetector

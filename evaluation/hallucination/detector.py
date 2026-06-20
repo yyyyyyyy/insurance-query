@@ -10,7 +10,7 @@ MUST DETECT:
 from __future__ import annotations
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 from evaluation.trace.capture import QueryTrace
 
 @dataclass
@@ -121,13 +121,15 @@ class HallucinationDetector:
         return entities
 
     def _compute_score(self, violations: List[Violation]) -> float:
-        if not violations: return 0.0
+        if not violations:
+            return 0.0
         weights = {"HIGH": 0.5, "MEDIUM": 0.25, "LOW": 0.1}
         score = sum(weights.get(v.severity, 0.1) for v in violations)
         return min(score, 1.0)
 
     def _compute_severity(self, violations: List[Violation]) -> str:
-        if not violations: return "NONE"
+        if not violations:
+            return "NONE"
         sev_order = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
         max_sev = max(sev_order.get(v.severity, 0) for v in violations)
         return {3: "HIGH", 2: "MEDIUM", 1: "LOW"}.get(max_sev, "LOW")

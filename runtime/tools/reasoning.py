@@ -83,7 +83,7 @@ class CompareTool(BaseTool[CompareInput, CompareOutput]):
             comparison_rows.append(row)
 
         evidence = [make_evidence("COMPARE_ENGINE", f"compare_{pid}"[:20],
-                    f"Product comparison result", SourceType.COMPARISON_ENGINE)
+                    "Product comparison result", SourceType.COMPARISON_ENGINE)
                     for pid in input_data.product_ids]
 
         return ToolResult(tool_name=self.name, status=ToolStatus.SUCCESS,

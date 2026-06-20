@@ -1,19 +1,25 @@
 """Multi-Agent Runtime — AgentBus + 5 specialized agents."""
 
 from __future__ import annotations
-import time, uuid
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 class AgentStatus(str, Enum):
-    IDLE="idle"; RUNNING="running"; COMPLETED="completed"
-    FAILED="failed"; DEGRADED="degraded"
+    IDLE = "idle"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    DEGRADED = "degraded"
 
 @dataclass
 class AgentMessage:
-    msg_id: str; sender: str; recipient: str; msg_type: str
+    msg_id: str
+    sender: str
+    recipient: str
+    msg_type: str
     payload: Dict[str, Any] = field(default_factory=dict)
     trace_id: str = ""
     def to_dict(self): return {"msg_id":self.msg_id,"sender":self.sender,
@@ -21,8 +27,10 @@ class AgentMessage:
 
 class BaseAgent(ABC):
     def __init__(self, name: str):
-        self.name=name; self.status=AgentStatus.IDLE
-        self.execution_count=0; self.failure_count=0
+        self.name = name
+        self.status = AgentStatus.IDLE
+        self.execution_count = 0
+        self.failure_count = 0
     @abstractmethod
     def handle(self, msg: AgentMessage, ctx: "AgentContext") -> AgentMessage: ...
     def status_dict(self): return {"name":self.name,"status":self.status.value,
@@ -30,7 +38,9 @@ class BaseAgent(ABC):
 
 @dataclass
 class AgentContext:
-    session_id: str; query: str; trace_id: str = ""
+    session_id: str
+    query: str
+    trace_id: str = ""
     intent: Dict[str, Any] = field(default_factory=dict)
     plan: List[Dict[str, Any]] = field(default_factory=list)
     ontology_context: List[str] = field(default_factory=list)
@@ -54,11 +64,13 @@ class AgentBus:
     def __init__(self):
         self._agents: Dict[str, BaseAgent] = {}
         self._log: List[AgentMessage] = []
-    def register(self, a: BaseAgent): self._agents[a.name] = a
+    def register(self, a: BaseAgent):
+        self._agents[a.name] = a
     def send(self, msg: AgentMessage, ctx: Optional["AgentContext"] = None) -> AgentMessage:
         self._log.append(msg)
         a = self._agents.get(msg.recipient)
-        if not a: return AgentMessage(str(uuid.uuid4()),msg.recipient,msg.sender,"error",{"error":f"Agent not found: {msg.recipient}"})
+        if not a:
+            return AgentMessage(str(uuid.uuid4()),msg.recipient,msg.sender,"error",{"error":f"Agent not found: {msg.recipient}"})
         return a.handle(msg, ctx)
     def get_agent(self, n): return self._agents.get(n)
     def list_agents(self): return list(self._agents.keys())

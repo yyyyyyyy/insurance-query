@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 from knowledge.ingestion.pipeline import (
-    ChunkStore, EmbeddingGenerator, DocumentMeta, Chunk,
+    ChunkStore, EmbeddingGenerator, Chunk,
     chunk_document, ingest_text_document, _split_by_clause
 )
 from knowledge.ontology.graph import (
@@ -11,7 +11,7 @@ from knowledge.ontology.graph import (
     EntityType, RelationType
 )
 from knowledge.ontology.builder import build_insurance_ontology
-from knowledge.evidence.index import EvidenceIndex, EvidenceRecord
+from knowledge.evidence.index import EvidenceIndex
 from knowledge.retrieval.engine import HybridRetriever, BM25Scorer
 from knowledge.engine import KnowledgeEngine
 

@@ -14,13 +14,14 @@ import re
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
-from knowledge.ingestion.pipeline import Chunk, ChunkStore, EmbeddingGenerator
-from knowledge.ontology.graph import OntologyGraph, OntologyEntity, EntityType
+from knowledge.ingestion.pipeline import Chunk, ChunkStore
+from knowledge.ontology.graph import OntologyGraph
 
 class BM25Scorer:
     """BM25 keyword relevance scoring."""
     def __init__(self, k1: float = 1.5, b: float = 0.75):
-        self.k1 = k1; self.b = b
+        self.k1 = k1
+        self.b = b
         self._doc_lengths: List[int] = []
         self._avg_dl: float = 0.0
         self._doc_count: int = 0
@@ -35,20 +36,24 @@ class BM25Scorer:
         for text in texts:
             tokens = self._tokenize(text)
             tf = defaultdict(int)
-            for t in tokens: tf[t] += 1
+            for t in tokens:
+                tf[t] += 1
             self._doc_term_freqs.append(dict(tf))
-            for t in set(tokens): self._term_df[t] += 1
+            for t in set(tokens):
+                self._term_df[t] += 1
         self._fitted = True
 
     def score(self, query: str, doc_idx: int) -> float:
-        if not self._fitted: return 0.0
+        if not self._fitted:
+            return 0.0
         q_tokens = self._tokenize(query)
         dl = self._doc_lengths[doc_idx]
         tf = self._doc_term_freqs[doc_idx]
         score = 0.0
         for t in q_tokens:
             df = self._term_df.get(t, 0)
-            if df == 0: continue
+            if df == 0:
+                continue
             idf = math.log((self._doc_count - df + 0.5) / (df + 0.5) + 1.0)
             term_freq = tf.get(t, 0)
             numerator = term_freq * (self.k1 + 1)

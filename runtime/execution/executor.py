@@ -9,13 +9,12 @@ Architecture:
 from __future__ import annotations
 
 import time
-import threading
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from runtime.tools.base import ToolResult, ToolStatus
+from runtime.tools.base import ToolResult
 
 
 class ExecutionStatus(str, Enum):
@@ -204,7 +203,7 @@ class AsyncExecutor:
                 results.append(AsyncResult(
                     tool_name=tool_name,
                     status=ExecutionStatus.TIMEOUT,
-                    error=f"Parallel execution timeout",
+                    error="Parallel execution timeout",
                 ))
 
         return results

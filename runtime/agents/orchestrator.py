@@ -11,14 +11,15 @@ Pipeline:
 """
 
 from __future__ import annotations
-import time, uuid
+import time
+import uuid
 from typing import Any, Dict, List, Optional
-from runtime.agents.bus import AgentBus, AgentMessage, AgentContext, AgentStatus
+from runtime.agents.bus import AgentBus, AgentMessage, AgentContext
 from runtime.agents.agents import (
     PlannerAgent, RetrievalAgent, ToolAgent, EvaluationAgent, SupervisorAgent
 )
 from runtime.tools.registry import ToolDispatcher, create_default_registry
-from runtime.execution.executor import AsyncExecutor, create_default_executor
+from runtime.execution.executor import create_default_executor
 from runtime.engine.event_store import (
     EventStore, answer_generated_event, evidence_found_event,
     intent_classified_event, ontology_expanded_event, plan_created_event,
@@ -27,9 +28,8 @@ from runtime.engine.event_store import (
     hallucination_detected_event, system_feedback_generated_event,
 )
 from infra.cache.store import TraceAwareCache
-from knowledge.ingestion.pipeline import ChunkStore, EmbeddingGenerator
+from knowledge.ingestion.pipeline import ChunkStore
 from knowledge.ontology.graph import OntologyGraph
-from knowledge.ontology.builder import build_insurance_ontology
 from knowledge.retrieval.engine import HybridRetriever
 
 class MultiAgentEngine:
@@ -68,7 +68,8 @@ class MultiAgentEngine:
         self._rules: List[Dict[str, Any]] = []
 
     def _ensure_knowledge(self):
-        if self._knowledge_loaded: return
+        if self._knowledge_loaded:
+            return
         from knowledge.ontology.builder import build_insurance_ontology
         from knowledge.retrieval.engine import HybridRetriever
         from knowledge.retrieval.embeddings import EmbeddingFactory
@@ -115,7 +116,8 @@ class MultiAgentEngine:
 
         # Wire retriever into RetrievalAgent
         ra = self.bus.get_agent("retrieval")
-        if ra: ra.retriever = self._retriever
+        if ra:
+            ra.retriever = self._retriever
         self._knowledge_loaded = True
 
     def query(self, query_text: str, session_id: Optional[str] = None) -> Dict[str, Any]:
@@ -147,7 +149,8 @@ class MultiAgentEngine:
         resp = self.bus.send(AgentMessage(str(uuid.uuid4()),"orchestrator","planner","task",{"query":query_text},trace_id=trace_id), ctx)
         intent = resp.payload.get("intent",{})
         plan = resp.payload.get("plan",resp.payload.get("fallback_plan",[]))
-        ctx.intent = intent; ctx.plan = plan
+        ctx.intent = intent
+        ctx.plan = plan
         ctx.execution_graph.append({"agent":"planner","intent":intent.get("intent"),"plan_len":len(plan)})
 
         # Event: INTENT_CLASSIFIED
@@ -303,7 +306,6 @@ class MultiAgentEngine:
 
         # Update working memory for multi-turn context
         if self.working_memory:
-            from runtime.tools.data_loader import load_product_catalog
             self.working_memory.update_from_query(
                 session_id=session_id,
                 query_text=query_text,
@@ -318,7 +320,8 @@ class MultiAgentEngine:
         return result
 
     def _ontology_expand(self, seed_names: List[str]) -> List[str]:
-        if not self._onto or not seed_names: return []
+        if not self._onto or not seed_names:
+            return []
         matches = []
         for name in seed_names:
             entities = self._onto.lookup(name)

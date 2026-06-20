@@ -5,7 +5,6 @@ Tests the POST /query endpoint and GET /sessions/{id} endpoint
 using FastAPI's TestClient.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.main import app

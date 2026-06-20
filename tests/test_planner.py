@@ -2,7 +2,6 @@
 Tests for Planner (Sprint 1.3 — Intent Classification + Plan Generation).
 """
 
-import pytest
 
 from runtime.engine.planner import classify_intent, generate_plan, INTENT_PATTERNS, PLAN_TEMPLATES
 

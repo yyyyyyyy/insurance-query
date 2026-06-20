@@ -18,7 +18,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class SelfTuner:
             self.config.ontology_weight = min(
                 self.config.ontology_weight + WEIGHT_ADJUST_STEP * 0.3, 0.3
             )
-            reason = f"boosted ontology (scores high)"
+            reason = "boosted ontology (scores high)"
         else:
             reason = "weights stable"
 

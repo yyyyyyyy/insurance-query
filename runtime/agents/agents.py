@@ -1,14 +1,11 @@
 """5 Specialized Agents: Planner, Retrieval, Tool, Evaluation, Supervisor."""
 
 from __future__ import annotations
-import time, uuid
-from typing import Any, Dict, List, Optional
+import uuid
 from runtime.agents.bus import BaseAgent, AgentMessage, AgentContext, AgentStatus
 from runtime.llm.plugin import classify_intent_auto, generate_plan_auto
 from runtime.tools.registry import ToolDispatcher, create_default_registry
-from runtime.tools.base import ToolResult, ToolStatus
-from runtime.execution.executor import AsyncExecutor, AsyncResult, ExecutionStatus, create_default_executor
-from infra.cache.store import TraceAwareCache
+from runtime.execution.executor import create_default_executor
 
 # ============================================================
 # 1. PlannerAgent
@@ -29,7 +26,8 @@ class PlannerAgent(BaseAgent):
             return AgentMessage(str(uuid.uuid4()),"planner","orchestrator","result",
                 {"intent":intent,"plan":plan},trace_id=msg.trace_id)
         except Exception as e:
-            self.failure_count += 1; self.status = AgentStatus.FAILED
+            self.failure_count += 1
+            self.status = AgentStatus.FAILED
             return AgentMessage(str(uuid.uuid4()),"planner","orchestrator","error",
                 {"error":str(e),"fallback_plan":generate_plan_auto(msg.payload.get("query",""),{"intent":"general_inquiry","confidence":0.5,"entities":[]})},trace_id=msg.trace_id)
 
@@ -40,7 +38,8 @@ class PlannerAgent(BaseAgent):
 class RetrievalAgent(BaseAgent):
     """Executes hybrid retrieval, ranks evidence, returns ranked chunks."""
     def __init__(self, retriever=None):
-        super().__init__("retrieval"); self.retriever = retriever
+        super().__init__("retrieval")
+        self.retriever = retriever
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
         self.status = AgentStatus.RUNNING
         try:
@@ -51,11 +50,13 @@ class RetrievalAgent(BaseAgent):
                 chunks = [{"chunk_id":c.chunk_id,"document_id":c.document_id,"content":c.content[:150],"clause":c.clause,"score":round(s,4)} for c,s in results]
             else:
                 chunks = []
-            self.execution_count += 1; self.status = AgentStatus.COMPLETED
+            self.execution_count += 1
+            self.status = AgentStatus.COMPLETED
             return AgentMessage(str(uuid.uuid4()),"retrieval","orchestrator","result",
                 {"chunks":chunks,"total":len(chunks)},trace_id=msg.trace_id)
         except Exception as e:
-            self.failure_count += 1; self.status = AgentStatus.FAILED
+            self.failure_count += 1
+            self.status = AgentStatus.FAILED
             return AgentMessage(str(uuid.uuid4()),"retrieval","orchestrator","error",
                 {"error":str(e),"chunks":[]},trace_id=msg.trace_id)
 
@@ -82,11 +83,13 @@ class ToolAgent(BaseAgent):
                 tool_results[tool_name] = result
                 if not result.success:
                     ctx.failure_recovery_path.append(f"tool:{tool_name}:{result.status.value}")
-            self.execution_count += 1; self.status = AgentStatus.COMPLETED
+            self.execution_count += 1
+            self.status = AgentStatus.COMPLETED
             return AgentMessage(str(uuid.uuid4()),"tool","orchestrator","result",
                 {"results":{k:v.to_dict() for k,v in tool_results.items()}},trace_id=msg.trace_id)
         except Exception as e:
-            self.failure_count += 1; self.status = AgentStatus.FAILED
+            self.failure_count += 1
+            self.status = AgentStatus.FAILED
             return AgentMessage(str(uuid.uuid4()),"tool","orchestrator","error",
                 {"error":str(e),"results":{}},trace_id=msg.trace_id)
 
@@ -111,10 +114,14 @@ class EvaluationAgent(BaseAgent):
                 q = ctx.query if ctx else msg.payload.get("query", "")
                 trace = tc.capture(sid, q,
                     trace_data.get("events", []), trace_data.get("state", {}))
-                ee = EvaluationEngine(); hd = HallucinationDetector(); fl = FeedbackLoop()
-                er = ee.evaluate(trace); hal = hd.detect(trace)
+                ee = EvaluationEngine()
+                hd = HallucinationDetector()
+                fl = FeedbackLoop()
+                er = ee.evaluate(trace)
+                hal = hd.detect(trace)
                 fb = fl.generate(er, hal)
-                self.execution_count += 1; self.status = AgentStatus.COMPLETED
+                self.execution_count += 1
+                self.status = AgentStatus.COMPLETED
                 return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","result",{
                     "total_score":er.total_score,"dimensions":{k:v.score for k,v in er.dimensions.items()},
                     "hallucination_score":hal.hallucination_score,"severity":hal.severity,
@@ -124,7 +131,8 @@ class EvaluationAgent(BaseAgent):
             return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","result",
                 {"total_score":0,"diagnosis":"No trace data"},trace_id=msg.trace_id)
         except Exception as e:
-            self.failure_count += 1; self.status = AgentStatus.DEGRADED
+            self.failure_count += 1
+            self.status = AgentStatus.DEGRADED
             return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","error",
                 {"error":str(e),"degraded":True},trace_id=msg.trace_id)
 
@@ -146,7 +154,8 @@ class SupervisorAgent(BaseAgent):
             health["degraded"] = ctx.degraded_mode
             if len(ctx.failure_recovery_path) > 2:
                 health["overall"] = "degrading"
-        self.execution_count += 1; self.status = AgentStatus.COMPLETED
+            self.execution_count += 1
+            self.status = AgentStatus.COMPLETED
         return AgentMessage(str(uuid.uuid4()),"supervisor","orchestrator","result",
             {"health":health,"recovery_actions":["retry_failed_agents","enable_fallbacks"] if health["issues"] else []},
             trace_id=msg.trace_id)

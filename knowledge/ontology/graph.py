@@ -11,17 +11,28 @@ from typing import Any, Dict, List, Optional, Set
 import networkx as nx
 
 class EntityType(str, Enum):
-    PRODUCT = "Product"; COVERAGE = "Coverage"; DISEASE = "Disease"
-    RULE = "Rule"; REGULATION = "Regulation"; CLAUSE = "Clause"; EXCLUSION = "Exclusion"
+    PRODUCT = "Product"
+    COVERAGE = "Coverage"
+    DISEASE = "Disease"
+    RULE = "Rule"
+    REGULATION = "Regulation"
+    CLAUSE = "Clause"
+    EXCLUSION = "Exclusion"
 
 class RelationType(str, Enum):
-    CONTAINS = "contains"; COVERS = "covers"; DEFINES = "defines"
-    IMPLEMENTS = "implements"; REGULATED_BY = "regulated_by"
-    EXCLUDES = "excludes"; REFERENCES = "references"
+    CONTAINS = "contains"
+    COVERS = "covers"
+    DEFINES = "defines"
+    IMPLEMENTS = "implements"
+    REGULATED_BY = "regulated_by"
+    EXCLUDES = "excludes"
+    REFERENCES = "references"
 
 @dataclass
 class OntologyEntity:
-    entity_id: str; name: str; entity_type: EntityType
+    entity_id: str
+    name: str
+    entity_type: EntityType
     aliases: List[str] = field(default_factory=list)
     properties: Dict[str, Any] = field(default_factory=dict)
     evidence_refs: List[str] = field(default_factory=list)
@@ -32,7 +43,9 @@ class OntologyEntity:
 
 @dataclass
 class OntologyRelation:
-    source_id: str; target_id: str; relation_type: RelationType
+    source_id: str
+    target_id: str
+    relation_type: RelationType
     evidence_refs: List[str] = field(default_factory=list)
     properties: Dict[str, Any] = field(default_factory=dict)
     def to_dict(self) -> Dict[str, Any]:
@@ -107,9 +120,12 @@ class OntologyGraph:
                       relation_type=None) -> List[OntologyRelation]:
         results = []
         for u, v, data in self._graph.edges(data=True):
-            if source_id and u != source_id: continue
-            if target_id and v != target_id: continue
-            if relation_type and data.get("relation_type") != relation_type.value: continue
+            if source_id and u != source_id:
+                continue
+            if target_id and v != target_id:
+                continue
+            if relation_type and data.get("relation_type") != relation_type.value:
+                continue
             results.append(OntologyRelation(
                 source_id=u, target_id=v,
                 relation_type=RelationType(data["relation_type"]),
@@ -118,10 +134,12 @@ class OntologyGraph:
         return results
 
     def get_outgoing(self, entity_id: str, relation_type=None) -> List[OntologyRelation]:
-        if entity_id not in self._graph: return []
+        if entity_id not in self._graph:
+            return []
         results = []
         for _, v, data in self._graph.out_edges(entity_id, data=True):
-            if relation_type and data.get("relation_type") != relation_type.value: continue
+            if relation_type and data.get("relation_type") != relation_type.value:
+                continue
             results.append(OntologyRelation(
                 source_id=entity_id, target_id=v,
                 relation_type=RelationType(data["relation_type"]),
@@ -130,10 +148,12 @@ class OntologyGraph:
         return results
 
     def get_incoming(self, entity_id: str, relation_type=None) -> List[OntologyRelation]:
-        if entity_id not in self._graph: return []
+        if entity_id not in self._graph:
+            return []
         results = []
         for u, _, data in self._graph.in_edges(entity_id, data=True):
-            if relation_type and data.get("relation_type") != relation_type.value: continue
+            if relation_type and data.get("relation_type") != relation_type.value:
+                continue
             results.append(OntologyRelation(
                 source_id=u, target_id=entity_id,
                 relation_type=RelationType(data["relation_type"]),
@@ -170,20 +190,24 @@ class OntologyGraph:
             next_frontier = set()
             for node in frontier:
                 for neighbor in self._graph.neighbors(node):
-                    if neighbor in visited: continue
+                    if neighbor in visited:
+                        continue
                     d = self._graph.edges[node, neighbor]
                     if relation_types and RelationType(d["relation_type"]) not in relation_types:
                         continue
                     next_frontier.add(neighbor)
                     visited.add(neighbor)
-            frontier = next_frontier
-            if not frontier: break
+            if not frontier:
+                break
         result = [self._entities[eid] for eid in (visited - seed_set) if eid in self._entities]
         return result[:max_results]
 
     def get_neighborhood(self, entity_id: str, radius: int = 1) -> Dict[str, Any]:
-        if entity_id not in self._graph: return {}
-        nodes = set(); edges = []; frontier = {entity_id}
+        if entity_id not in self._graph:
+            return {}
+        nodes = set()
+        edges = []
+        frontier = {entity_id}
         for _ in range(radius):
             nf = set()
             for node in frontier:
@@ -191,11 +215,13 @@ class OntologyGraph:
                 for _, v in self._graph.out_edges(node):
                     edges.append({"source":node,"target":v,
                                   "type":self._graph.edges[node,v]["relation_type"]})
-                    if v not in nodes: nf.add(v)
+                    if v not in nodes:
+                        nf.add(v)
                 for u, _ in self._graph.in_edges(node):
                     edges.append({"source":u,"target":node,
                                   "type":self._graph.edges[u,node]["relation_type"]})
-                    if u not in nodes: nf.add(u)
+                    if u not in nodes:
+                        nf.add(u)
             frontier = nf
         return {"center":entity_id,
                 "entities":[self._entities[n].to_dict() for n in nodes if n in self._entities],

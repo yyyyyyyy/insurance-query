@@ -9,11 +9,9 @@ Covers Sprint 1 exit criteria:
 - Replay state from event log
 """
 
-import pytest
 
 from runtime.engine.engine import InsureQueryEngine
-from runtime.engine.event_store import EventStore, EventType
-from runtime.engine.reducer import replay_state
+from runtime.engine.event_store import EventStore
 
 
 class TestEnginePipeline:

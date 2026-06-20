@@ -15,7 +15,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Dict, Set
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

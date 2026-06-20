@@ -15,20 +15,12 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from runtime.engine.event_store import (
     Event, EventStore, EventType,
-    user_query_event, intent_classified_event, plan_created_event,
-    tool_called_event, evidence_found_event, answer_generated_event,
-    chunk_created_event, embedding_generated_event, entity_linked_event,
-    ontology_expanded_event, evidence_indexed_event, retrieval_executed_event,
-    trace_captured_event, evaluation_completed_event,
-    hallucination_detected_event, system_feedback_generated_event,
-    agent_assigned_event, agent_completed_event, cache_hit_event,
-    cache_miss_event, system_retry_event, system_degraded_event,
 )
 
 logger = logging.getLogger(__name__)

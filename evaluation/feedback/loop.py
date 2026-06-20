@@ -7,7 +7,7 @@ Each signal targets a specific module with a concrete fix suggestion.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from evaluation.engine.scorer import EvaluationResult
 from evaluation.hallucination.detector import HallucinationReport
 
@@ -38,7 +38,8 @@ class FeedbackLoop:
     def _retrieval_feedback(self, er: EvaluationResult) -> List[FeedbackSignal]:
         signals = []
         rdim = er.dimensions.get("retrieval")
-        if not rdim: return signals
+        if not rdim:
+            return signals
         n = rdim.normalized()
         if n < 0.5:
             signals.append(FeedbackSignal(
@@ -56,7 +57,8 @@ class FeedbackLoop:
     def _tool_routing_feedback(self, er: EvaluationResult) -> List[FeedbackSignal]:
         signals = []
         tdim = er.dimensions.get("tool")
-        if not tdim: return signals
+        if not tdim:
+            return signals
         tools = tdim.details.get("tools_used", [])
         if len(tools) < 2:
             signals.append(FeedbackSignal(
@@ -97,7 +99,8 @@ class FeedbackLoop:
     def _efficiency_feedback(self, er: EvaluationResult) -> List[FeedbackSignal]:
         signals = []
         edim = er.dimensions.get("efficiency")
-        if not edim: return signals
+        if not edim:
+            return signals
         latency = edim.details.get("latency_ms", 0)
         if latency > 3000:
             signals.append(FeedbackSignal(

@@ -236,8 +236,8 @@ class RuleEngine:
 
         if matched:
             reason = " | ".join(match_reasons) if match_reasons else (
-                f"keyword match in query" if query_match else
-                f"evidence content match" if evidence_match else
+                "keyword match in query" if query_match else
+                "evidence content match" if evidence_match else
                 "rule applicable to intent"
             )
         else:
