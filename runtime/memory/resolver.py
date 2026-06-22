@@ -8,8 +8,14 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from infra.db.session_store import WorkingMemory
 
+# Pronouns / deixis that signal a follow-up question referring to a
+# previous turn's subject. ``其`` alone is too common in Chinese (means
+# "its/their" in many unrelated contexts), so we require the explicit
+# compounds ``其中`` / ``其它`` / ``其他`` instead. ``还有`` is kept but
+# only triggers when paired with a product-ref marker in
+# resolve_query (see is_follow_up logic) so false positives stay low.
 FOLLOW_UP_MARKERS = re.compile(
-    r"(它|那个|这个|刚才|上一个|之前|前述|该产?品|其|同样|还有)"
+    r"(它|那个|这个|刚才|上一个|之前|前述|该产?品|其中|其它|其他|同样)"
 )
 
 PRODUCT_REF_MARKERS = re.compile(
@@ -150,19 +156,14 @@ def resolve_query(
 
 
 def _extract_product_ids(ctx) -> List[str]:
-    """Extract product IDs from session facts and history."""
-    ids: List[str] = []
+    """Extract product IDs from session facts and history.
+
+    Delegates to the shared helper in runtime.memory.facts to avoid
+    divergent implementations across the codebase.
+    """
+    from runtime.memory.facts import extract_product_ids_from_facts
     facts = getattr(ctx, "facts", {}) or {}
-    for key, val in facts.items():
-        if key.startswith("product:") and isinstance(val, dict):
-            pid = key.split(":", 1)[1]
-            if pid:
-                ids.append(pid)
-        if key == "last_compared_products" and isinstance(val, dict):
-            ids.extend(val.get("value", []))
-        if key == "last_product_ids" and isinstance(val, dict):
-            ids.extend(val.get("value", []))
-    return list(dict.fromkeys(ids))
+    return extract_product_ids_from_facts(facts)
 
 
 def merge_entities_into_intent(

@@ -78,3 +78,27 @@ def merge_facts(existing: Dict[str, Any], new_facts: List[MemoryFact]) -> Dict[s
     for f in new_facts:
         merged[f.key] = f.to_dict()
     return merged
+
+
+def extract_product_ids_from_facts(facts: Dict[str, Any]) -> List[str]:
+    """Extract product IDs from session facts.
+
+    Single source of truth for deriving ``previous_product_ids`` from a
+    facts dict. Recognizes:
+      - ``product:<pid>`` keys (dict-valued)
+      - ``last_compared_products`` (dict with ``value`` list)
+      - ``last_product_ids`` (dict with ``value`` list)
+
+    Returns de-duplicated IDs preserving first-seen order.
+    """
+    ids: List[str] = []
+    for key, val in (facts or {}).items():
+        if key.startswith("product:") and isinstance(val, dict):
+            pid = key.split(":", 1)[1]
+            if pid:
+                ids.append(pid)
+        if key == "last_compared_products" and isinstance(val, dict):
+            ids.extend(val.get("value", []) or [])
+        if key == "last_product_ids" and isinstance(val, dict):
+            ids.extend(val.get("value", []) or [])
+    return list(dict.fromkeys(ids))

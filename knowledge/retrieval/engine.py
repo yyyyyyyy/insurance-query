@@ -9,13 +9,64 @@ embeddings with automatic fallback to TF-IDF.
 """
 
 from __future__ import annotations
+import logging
 import math
 import re
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 from knowledge.ingestion.pipeline import Chunk, ChunkStore
 from knowledge.ontology.graph import OntologyGraph
+
+logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_jieba():
+    """Return a configured jieba tokenizer, or None if not installed.
+
+    jieba is an optional dependency — when unavailable we fall back to a
+    regex-based Chinese 2-3 gram tokenizer.
+    """
+    try:
+        import jieba  # type: ignore
+        # Suppress jieba's debug logging to keep stderr clean.
+        jieba.setLogLevel(20)
+        return jieba
+    except ImportError:
+        return None
+
+
+def _tokenize_chinese(text: str) -> List[str]:
+    """Tokenize mixed Chinese/English text.
+
+    Prefers jieba word segmentation for Chinese (e.g. "等待期" stays as
+    one token instead of being split into "等待" + "期"). Falls back to
+    a regex that emits Chinese 2-3 char grams plus ASCII words.
+    """
+    jieba = _get_jieba()
+    if jieba is not None:
+        # cut_for_search gives higher recall for insurance-domain terms
+        # than the default precise cut; we dedupe per-query at call sites.
+        tokens: List[str] = []
+        for tok in jieba.lcut_for_search(text):
+            tok = tok.strip().lower()
+            if not tok:
+                continue
+            # Keep meaningful tokens: ASCII words (len>=2) or Chinese (len>=2)
+            # to drop single-char particles like "的"/"了"/"是".
+            if re.fullmatch(r"[a-z]+", tok):
+                if len(tok) >= 2:
+                    tokens.append(tok)
+            elif re.search(r"[\u4e00-\u9fff]", tok) and len(tok) >= 2:
+                tokens.append(tok)
+        return tokens
+    # Fallback: 2-3 char Chinese grams (skip 1-grams to reduce noise)
+    return [
+        t for t in re.findall(r"[\u4e00-\u9fff]{2,3}|[a-zA-Z]+", text.lower())
+        if len(t) >= 2
+    ]
 
 class BM25Scorer:
     """BM25 keyword relevance scoring."""
@@ -63,7 +114,7 @@ class BM25Scorer:
 
     @staticmethod
     def _tokenize(text: str) -> List[str]:
-        return [t for t in re.findall(r'[\u4e00-\u9fff]{1,3}|[a-zA-Z]+', text.lower()) if len(t) >= 1]
+        return _tokenize_chinese(text)
 
 class HybridRetriever:
     """Hybrid retrieval: BM25 (keyword) + Vector (semantic) + Ontology (knowledge-guided).

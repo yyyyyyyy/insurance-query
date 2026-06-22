@@ -28,14 +28,21 @@ def _create_app() -> FastAPI:
 
     @asynccontextmanager
     async def _lifespan(_app: FastAPI):
-        # Pre-load ontology, retriever, FAQ index, and embeddings at startup.
-        # Without this the first user query would block for several seconds
-        # building the knowledge graph and fitting BM25/embeddings.
-        try:
-            engine._ensure_knowledge()
-            logger.info("Knowledge preloaded at startup")
-        except Exception as exc:
-            logger.warning("Knowledge warmup failed (will lazy-load): %s", exc)
+        # Warm up the knowledge graph + retriever in a background thread so
+        # the server (and test clients using this lifespan) become ready
+        # immediately. ``_ensure_knowledge`` is idempotent and guards on
+        # ``_knowledge_loaded``, so the first real query will simply wait
+        # for or join the in-flight warmup.
+        import threading
+
+        def _warmup():
+            try:
+                engine._ensure_knowledge()
+                logger.info("Knowledge preloaded at startup")
+            except Exception as exc:
+                logger.warning("Knowledge warmup failed (will lazy-load): %s", exc)
+
+        threading.Thread(target=_warmup, name="knowledge-warmup", daemon=True).start()
         yield
 
     return FastAPI(
@@ -48,16 +55,35 @@ def _create_app() -> FastAPI:
 
 app = _create_app()
 
+def _cors_origins() -> list:
+    """CORS allowed origins, configurable via CORS_ORIGINS env var.
+
+    Accepts a comma-separated list, e.g.
+    ``CORS_ORIGINS=https://app.example.com,https://staging.example.com``.
+    Falls back to the local development origins when unset.
+    """
+    import os
+    raw = os.environ.get("CORS_ORIGINS", "").strip()
+    if not raw:
+        return ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
 from infra.middleware.rate_limit import RateLimitMiddleware
+from infra.middleware.request_id import RequestIdMiddleware, install_log_filter
 app.add_middleware(RateLimitMiddleware, rate=10, burst=30)
+app.add_middleware(RequestIdMiddleware)
+
+# Make every log record carry the current request_id (correlation ID).
+install_log_filter()
 
 registry = create_default_registry()
 dispatcher = ToolDispatcher(registry)

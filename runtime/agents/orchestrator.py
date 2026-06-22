@@ -178,7 +178,7 @@ class MultiAgentEngine:
                 session_id, seq,
                 hallucination_score=float(evaluation.get("hallucination_score", 0)),
                 severity=evaluation.get("severity", "NONE"),
-                violations=[],
+                violations=evaluation.get("violations", []),
                 from_cache=True,
             ))
 
@@ -286,18 +286,15 @@ class MultiAgentEngine:
         batch_ctx = _nullcontext()
         if session_lock is not None:
             batch_ctx = session_lock
-        batch_supported = hasattr(self.event_store, "begin_batch")
 
         with batch_ctx:
-            if batch_supported:
-                self.event_store.begin_batch()
+            self.event_store.begin_batch()
             try:
                 return self._run_query(
                     query_text, session_id, trace_id, t0,
                 )
             finally:
-                if batch_supported:
-                    self.event_store.commit_batch()
+                self.event_store.commit_batch()
 
     def _run_query(
         self,
@@ -641,7 +638,7 @@ class MultiAgentEngine:
             session_id, seq,
             hallucination_score=float(eval_result.get("hallucination_score", 0)),
             severity=eval_result.get("severity", "NONE"),
-            violations=[],
+            violations=eval_result.get("violations", []),
         ))
         feedback_signals = eval_result.get("feedback", [])
         if feedback_signals:
@@ -732,7 +729,7 @@ class MultiAgentEngine:
     def _ontology_expand(self, seed_names: List[str]) -> List[str]:
         if not self._onto or not seed_names:
             return []
-        matches = []
+        matches: List[str] = []
         for name in seed_names:
             entities = self._onto.lookup(name)
             matches.extend(e.entity_id for e in entities)

@@ -67,12 +67,14 @@ class TraceAwareCache:
                 self._stores[s].clear()
         return count
 
-    def query_key(self, query, session_id: str = ""): 
+    def query_key(self, query, session_id: str = ""):
+        # sha256 (256-bit) eliminates the collision risk of the prior
+        # truncated md5 (64-bit) approach without meaningful cost.
         if session_id:
-            return hashlib.md5(f"q:{query}:{session_id}".encode()).hexdigest()[:16]
-        return hashlib.md5(f"q:{query}".encode()).hexdigest()[:16]
-    def retrieval_key(self, query): return hashlib.md5(f"r:{query}".encode()).hexdigest()[:16]
-    def tool_key(self, tool, params): return hashlib.md5(f"t:{tool}:{sorted(str(params))}".encode()).hexdigest()[:16]
+            return hashlib.sha256(f"q:{query}:{session_id}".encode()).hexdigest()
+        return hashlib.sha256(f"q:{query}".encode()).hexdigest()
+    def retrieval_key(self, query): return hashlib.sha256(f"r:{query}".encode()).hexdigest()
+    def tool_key(self, tool, params): return hashlib.sha256(f"t:{tool}:{sorted(str(params))}".encode()).hexdigest()
     def evaluation_key(self, tid): return f"ev:{tid}"
 
     def stats(self):

@@ -295,7 +295,14 @@ class RuleEngine:
         tool_results: Dict[str, Any],
         evidence: List[Dict[str, Any]],
     ) -> bool:
-        """Check if a condition is satisfied by tool results or evidence."""
+        """Check if a condition is satisfied by tool results or evidence.
+
+        Evidence matching checks the condition ``field`` against actual
+        dict keys (including dotted paths and metadata-wrapped keys) and
+        applies the same operator comparison used for tool results, rather
+        than doing a substring scan over the stringified evidence dict
+        (which previously matched ``age`` against ``page``, etc.).
+        """
         field = condition.get("field", "")
         operator = condition.get("operator", "equals")
         value = condition.get("value", "")
@@ -307,9 +314,18 @@ class RuleEngine:
                 if _compare(actual, value, operator):
                     return True
 
-        # Search in evidence
+        # Search in evidence: match field name as a real key, then apply
+        # the operator. Falls back to no match instead of a substring test.
         for ev in evidence[:5]:
-            if str(field) in str(ev):
+            if not isinstance(ev, dict):
+                continue
+            actual = _deep_get(ev, field)
+            if actual is None:
+                # Try metadata-wrapped key (canonical evidence payloads)
+                meta = ev.get("metadata", {})
+                if isinstance(meta, dict):
+                    actual = _deep_get(meta, field)
+            if actual is not None and _compare(actual, value, operator):
                 return True
 
         return False

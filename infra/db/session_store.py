@@ -205,17 +205,8 @@ class WorkingMemory:
 
     @staticmethod
     def _extract_product_ids(ctx: SessionContext) -> List[str]:
-        ids: List[str] = []
-        for key, val in (ctx.facts or {}).items():
-            if key.startswith("product:") and isinstance(val, dict):
-                pid = key.split(":", 1)[1]
-                if pid:
-                    ids.append(pid)
-            if key == "last_compared_products" and isinstance(val, dict):
-                ids.extend(val.get("value", []))
-            if key == "last_product_ids" and isinstance(val, dict):
-                ids.extend(val.get("value", []))
-        return list(dict.fromkeys(ids))
+        from runtime.memory.facts import extract_product_ids_from_facts
+        return extract_product_ids_from_facts(ctx.facts or {})
 
     def add_facts(self, session_id: str, facts: Dict[str, Any]) -> None:
         """Merge facts into session context."""

@@ -207,10 +207,42 @@ def _format_citations(evidence: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _compute_confidence(intent_result: Dict[str, Any], evidence: List[Dict[str, Any]]) -> float:
-    """Compute answer confidence from intent confidence and evidence strength."""
+    """Compute answer confidence from intent confidence and evidence strength.
+
+    Blends three signals:
+      - intent classification confidence (40%)
+      - evidence count saturation (35%): capped at 5 items
+      - mean evidence relevance score (25%): uses ``score``/``relevance``
+        fields when present so high-quality but few-item answers are not
+        penalized as harshly as pure count-based scoring would.
+    """
     intent_conf = intent_result.get("confidence", 0.5)
-    evidence_factor = min(len(evidence) / 5.0, 1.0) if evidence else 0.3
-    return round(intent_conf * 0.4 + evidence_factor * 0.6, 2)
+
+    if not evidence:
+        # No evidence — the answer is essentially ungrounded.
+        return round(max(intent_conf * 0.2, 0.1), 2)
+
+    count_factor = min(len(evidence) / 5.0, 1.0)
+
+    # Collect per-item relevance scores (0..1) when available.
+    scores = []
+    for ev in evidence:
+        s = ev.get("score", ev.get("relevance_score"))
+        if s is None:
+            continue
+        try:
+            val = float(s)
+            if 0.0 <= val <= 1.0:
+                scores.append(val)
+            elif val > 1.0:
+                # BM25-style raw scores; normalize softly.
+                scores.append(min(val / 10.0, 1.0))
+        except (TypeError, ValueError):
+            continue
+    score_factor = (sum(scores) / len(scores)) if scores else 0.5
+
+    confidence = intent_conf * 0.4 + count_factor * 0.35 + score_factor * 0.25
+    return round(max(0.0, min(confidence, 1.0)), 2)
 
 
 def compose_answer_auto(

@@ -504,3 +504,20 @@ class EventStore:
     def replay(self, session_id: str) -> List[Event]:
         """Replay all events for a session (used by reducer to rebuild state)."""
         return self.get_session_events(session_id)
+
+    # -- Batch transaction protocol (optional for subclasses) --
+    # Default no-op implementations so the orchestrator can call these
+    # unconditionally; persistent stores (SqliteEventStore) override them
+    # to group many appends into a single commit.
+
+    def begin_batch(self) -> None:
+        """Begin a batch transaction. No-op for in-memory stores."""
+        return None
+
+    def commit_batch(self) -> None:
+        """Commit a pending batch transaction. No-op for in-memory stores."""
+        return None
+
+    def rollback_batch(self) -> None:
+        """Roll back a pending batch transaction. No-op for in-memory stores."""
+        return None

@@ -33,11 +33,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff pytest-timeout
+          pip install ruff pytest-timeout mypy
 
       - name: Lint with ruff
         run: |
           ruff check . --ignore=E501,E402,F841,F811 --exclude=.git,__pycache__,.pytest_cache,venv,.venv,knowledge_pack
+
+      - name: Type check with mypy (non-blocking during rollout)
+        continue-on-error: true
+        run: |
+          mypy runtime evaluation --config-file mypy.ini
 
       - name: Run tests
         run: |

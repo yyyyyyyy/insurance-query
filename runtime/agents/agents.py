@@ -221,6 +221,8 @@ class EvaluationAgent(BaseAgent):
             return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","result",{
                 "total_score":er.total_score,"dimensions":{k:v.score for k,v in er.dimensions.items()},
                 "hallucination_score":hal.hallucination_score,"severity":hal.severity,
+                "violations":[{"type":v.violation_type,"description":v.description,
+                               "severity":v.severity} for v in hal.violations],
                 "diagnosis":er.diagnosis,"feedback":[f.to_dict() for f in fb]
             },trace_id=msg.trace_id)
         except Exception as e:

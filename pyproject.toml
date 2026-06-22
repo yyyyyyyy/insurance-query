@@ -1,0 +1,21 @@
+[tool.mypy]
+# Incremental type checking — start permissive and tighten over time.
+python_version = "3.11"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+# Third-party libs without stubs are common; don't error on missing imports.
+ignore_missing_imports = true
+# Follow imports but don't recurse into every package on first pass.
+follow_imports = "silent"
+show_error_codes = true
+no_implicit_optional = true
+# The project root dir contains a hyphen (insurance-query) which is not a
+# valid Python package name — tell mypy to treat the cwd as the base.
+explicit_package_bases = true
+mypy_path = "."
+
+# Modules with tighter checks — expand this list as cleanup progresses.
+[[tool.mypy.overrides]]
+module = ["runtime.*", "evaluation.*"]
+warn_return_any = true

@@ -26,6 +26,12 @@ DEFAULT_WEIGHTS = {"bm25": 0.4, "vector": 0.4, "ontology": 0.2}
 WEIGHT_ADJUST_STEP = 0.05
 WEIGHT_MIN = 0.1
 WEIGHT_MAX = 0.7
+# EMA smoothing factor for score signals. Lower = smoother but slower to
+# react. 0.3 means new observation contributes 30%, history contributes 70%.
+SCORE_EMA_ALPHA = 0.3
+# Minimum observations before the tuner starts adjusting weights — avoids
+# overreacting to noisy single-sample scores on cold start.
+MIN_SAMPLES_FOR_ADJUST = 3
 
 
 @dataclass
@@ -40,6 +46,10 @@ class TuningConfig:
     evidence_threshold: float = 0.1
     total_queries: int = 0
     last_adjustment: str = ""
+    # EMA-smoothed quality signals — persisted across runs so the tuner
+    # doesn't reset its memory on restart. ``-1.0`` flags "uninitialized".
+    retrieval_score_ema: float = -1.0
+    answer_score_ema: float = -1.0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -51,6 +61,8 @@ class TuningConfig:
             "evidence_threshold": self.evidence_threshold,
             "total_queries": self.total_queries,
             "last_adjustment": self.last_adjustment,
+            "retrieval_score_ema": round(self.retrieval_score_ema, 4),
+            "answer_score_ema": round(self.answer_score_ema, 4),
         }
 
 
@@ -92,61 +104,86 @@ class SelfTuner:
     ) -> TuningConfig:
         """Apply evaluation results to adjust tuning parameters.
 
-        Returns the updated config.
+        Uses EMA-smoothed retrieval/answer scores so a single noisy
+        evaluation does not flip the weights back and forth. Adjustments
+        are skipped until at least ``MIN_SAMPLES_FOR_ADJUST`` samples
+        have been observed.
         """
         self.config.total_queries += 1
 
         dims = evaluation.get("dimensions", {})
         total_score = evaluation.get("total_score", 50)
 
-        # Adjust retrieval weights based on retrieval quality
-        retrieval_score = dims.get("retrieval", 50) / 100.0
-        answer_score = dims.get("answer", 50) / 100.0
-
-        if retrieval_score < 0.5:
-            # Retrieval poor: boost BM25 (keyword) more
-            self.config.bm25_weight = min(
-                self.config.bm25_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
-            )
-            self.config.vector_weight = max(
-                self.config.vector_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
-            )
-            reason = f"boosted BM25 (retrieval_score={retrieval_score:.2f})"
-        elif answer_score < 0.5:
-            # Answer quality poor: might need better semantic understanding
-            self.config.vector_weight = min(
-                self.config.vector_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
-            )
-            self.config.bm25_weight = max(
-                self.config.bm25_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
-            )
-            reason = f"boosted vector (answer_score={answer_score:.2f})"
-        elif retrieval_score > 0.8 and answer_score > 0.8:
-            # Both great: slightly increase ontology for better context
-            self.config.ontology_weight = min(
-                self.config.ontology_weight + WEIGHT_ADJUST_STEP * 0.3, 0.3
-            )
-            reason = "boosted ontology (scores high)"
+        # Update EMA-smoothed scores. First observation seeds the EMA.
+        retrieval_score_raw = dims.get("retrieval", 50) / 100.0
+        answer_score_raw = dims.get("answer", 50) / 100.0
+        if self.config.retrieval_score_ema < 0:
+            self.config.retrieval_score_ema = retrieval_score_raw
         else:
-            reason = "weights stable"
+            self.config.retrieval_score_ema = (
+                SCORE_EMA_ALPHA * retrieval_score_raw
+                + (1 - SCORE_EMA_ALPHA) * self.config.retrieval_score_ema
+            )
+        if self.config.answer_score_ema < 0:
+            self.config.answer_score_ema = answer_score_raw
+        else:
+            self.config.answer_score_ema = (
+                SCORE_EMA_ALPHA * answer_score_raw
+                + (1 - SCORE_EMA_ALPHA) * self.config.answer_score_ema
+            )
 
-        # Normalize weights to sum to 1.0
-        total_w = (
-            self.config.bm25_weight
-            + self.config.vector_weight
-            + self.config.ontology_weight
-        )
-        if total_w > 0:
-            self.config.bm25_weight /= total_w
-            self.config.vector_weight /= total_w
-            self.config.ontology_weight /= total_w
+        reason = "weights stable (warmup)"
 
-        # Adjust ontology expansion depth
-        onto_score = dims.get("reasoning", 50) / 100.0
-        if onto_score < 0.4:
-            self.config.ontology_depth = min(self.config.ontology_depth + 1, 4)
+        # Only adjust once we have enough samples to trust the smoothed mean.
+        if self.config.total_queries >= MIN_SAMPLES_FOR_ADJUST:
+            retrieval_score = self.config.retrieval_score_ema
+            answer_score = self.config.answer_score_ema
 
-        # Adjust evidence threshold
+            if retrieval_score < 0.5:
+                # Retrieval poor: boost BM25 (keyword) more
+                self.config.bm25_weight = min(
+                    self.config.bm25_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
+                )
+                self.config.vector_weight = max(
+                    self.config.vector_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
+                )
+                reason = f"boosted BM25 (retrieval_ema={retrieval_score:.2f})"
+            elif answer_score < 0.5:
+                # Answer quality poor: might need better semantic understanding
+                self.config.vector_weight = min(
+                    self.config.vector_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
+                )
+                self.config.bm25_weight = max(
+                    self.config.bm25_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
+                )
+                reason = f"boosted vector (answer_ema={answer_score:.2f})"
+            elif retrieval_score > 0.8 and answer_score > 0.8:
+                # Both great: slightly increase ontology for better context
+                self.config.ontology_weight = min(
+                    self.config.ontology_weight + WEIGHT_ADJUST_STEP * 0.3, 0.3
+                )
+                reason = "boosted ontology (scores high)"
+            else:
+                reason = "weights stable"
+
+            # Normalize weights to sum to 1.0
+            total_w = (
+                self.config.bm25_weight
+                + self.config.vector_weight
+                + self.config.ontology_weight
+            )
+            if total_w > 0:
+                self.config.bm25_weight /= total_w
+                self.config.vector_weight /= total_w
+                self.config.ontology_weight /= total_w
+
+        # Adjust ontology expansion depth (only after warmup)
+        if self.config.total_queries >= MIN_SAMPLES_FOR_ADJUST:
+            onto_score = dims.get("reasoning", 50) / 100.0
+            if onto_score < 0.4:
+                self.config.ontology_depth = min(self.config.ontology_depth + 1, 4)
+
+        # Adjust evidence threshold (reactive — hallucination is high-signal)
         hallucination_score = evaluation.get("hallucination_score", 0)
         if hallucination_score > 0.3:
             self.config.evidence_threshold = min(

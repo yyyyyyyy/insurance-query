@@ -76,7 +76,8 @@ class EvaluationEngine:
             failure_points=failures, diagnosis=diagnosis)
 
     def _score_retrieval(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0
+        # Positive scoring: start at 0, earn points for each good property.
+        score = 0.0
         failures = []
         details = {}
         ev_count = trace.evidence_count
@@ -86,113 +87,149 @@ class EvaluationEngine:
         # Evidence must exist (prefer accepted count from EVIDENCE_SELECTED)
         effective_count = accepted if accepted > 0 else ev_count
         if effective_count == 0:
-            score -= 3.0
             failures.append("No evidence retrieved")
-        elif effective_count < 3:
-            score -= 1.0
-            failures.append("Low evidence count")
+        else:
+            # +2 for having any accepted evidence, +1 extra when rich set.
+            score += 2.0
+            if effective_count >= 3:
+                score += 1.0
+            elif effective_count < 3:
+                failures.append("Low evidence count")
 
-        # Ontology hit rate
+        # Ontology hit rate (+1 if >50% of retrievals used ontology)
         onto_hits = sum(1 for r in rr if r.get("ontology_used", False))
         onto_rate = onto_hits / max(len(rr), 1)
         details["ontology_hit_rate"] = round(onto_rate, 2)
         details["accepted_evidence_count"] = accepted
+        if onto_rate >= 0.5:
+            score += 1.0
 
-        # Result count
+        # Result count (+1 for non-zero retrieval results)
         total_retrieved = sum(r.get("result_count", 0) for r in rr)
         details["total_retrieved"] = total_retrieved
-        if total_retrieved == 0 and not rr:
-            score -= 2.0
+        if total_retrieved > 0 or rr:
+            score += 1.0
+        else:
             failures.append("Zero retrieval results")
 
-        return DimensionScore("retrieval", max(0, score), 5.0, details, failures)
+        return DimensionScore("retrieval", min(score, 5.0), 5.0, details, failures)
 
     def _score_tools(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0
+        score = 0.0
         failures = []
         details = {}
         tc = trace.tool_call_count
 
         if tc == 0:
-            score -= 3.0
             failures.append("No tools called")
-        elif tc < 2:
-            score -= 0.5
+        else:
+            # +2 for having tools, +1 extra when 2+ tools used (diversity).
+            score += 2.0
+            if tc >= 2:
+                score += 1.0
 
         # Tool diversity
         tools_used = {c.get("tool_name","") for c in trace.tool_calls}
         details["tools_used"] = sorted(tools_used)
         details["tool_count"] = tc
 
-        if "compare" in tools_used and "attribute_extraction" not in tools_used:
-            score -= 0.5
+        # +1 when compare tool is paired with attribute_extraction
+        if "compare" in tools_used and "attribute_extraction" in tools_used:
+            score += 1.0
+        elif "compare" in tools_used and "attribute_extraction" not in tools_used:
             failures.append("Compare tool called without attribute extraction")
 
-        return DimensionScore("tool", max(0, score), 5.0, details, failures)
+        # +1 when 3+ distinct tools were used (broad coverage)
+        if len(tools_used) >= 3:
+            score += 1.0
+
+        return DimensionScore("tool", min(score, 5.0), 5.0, details, failures)
 
     def _score_reasoning(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0
+        score = 0.0
         failures = []
         details = {}
         plan = trace.plan_steps
 
         if not plan:
-            score -= 3.0
             failures.append("No execution plan")
-        elif len(plan) < 2:
-            score -= 1.0
-            failures.append("Plan too short")
+        else:
+            # +2 for any plan, +1 extra when plan has 2+ steps.
+            score += 2.0
+            if len(plan) >= 2:
+                score += 1.0
+            else:
+                failures.append("Plan too short")
 
         details["plan_length"] = len(plan)
 
-        # Ontology expansion quality
+        # Ontology expansion quality (+1 when entities used, +1 for depth)
         onto_entities = trace.ontology_entities_used
         details["ontology_entities"] = onto_entities
+        # ``ontology_entities_used`` is an int (count), not a list.
+        if isinstance(onto_entities, int):
+            if onto_entities > 0:
+                score += 1.0
+            if onto_entities >= 3:
+                score += 1.0
+        elif onto_entities:  # tolerate list/tuple form
+            score += 1.0
+            if len(onto_entities) >= 3:
+                score += 1.0
 
-        return DimensionScore("reasoning", max(0, score), 5.0, details, failures)
+        return DimensionScore("reasoning", min(score, 5.0), 5.0, details, failures)
 
     def _score_answer(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
-        score = 5.0
+        score = 0.0
         failures = []
         details = {}
         answer = trace.final_answer
         answer_text = answer.get("text", "") if answer else ""
         ev_count = trace.evidence_count
 
-        # Groundedness: answer must have evidence
+        # Groundedness: answer must have evidence (+2)
         if ev_count == 0:
-            score -= 3.0
             failures.append("HALLUCINATION: Answer has zero evidence")
-        elif ev_count < 2:
-            score -= 1.0
-            failures.append("Low evidence linkage")
+        else:
+            score += 2.0
+            if ev_count >= 2:
+                score += 0.5
+            else:
+                failures.append("Low evidence linkage")
 
-        # Completeness
-        if not answer_text or len(answer_text) < 20:
-            score -= 2.0
+        # Completeness (+1 for non-trivial answer length)
+        if answer_text and len(answer_text) >= 20:
+            score += 1.0
+        else:
             failures.append("Answer too short or empty")
 
-        # Citation check
+        # Citation check (+1)
         citations = answer.get("citations", []) if answer else []
         details["citation_count"] = len(citations)
         details["evidence_count"] = ev_count
-        if not citations:
-            score -= 1.0
+        if citations:
+            score += 1.0
+        else:
             failures.append("No citations in answer")
 
-        # Compare with expected if available
+        # +0.5 bonus for multiple citations (thorough sourcing)
+        if len(citations) >= 2:
+            score += 0.5
+
+        # Compare with expected if available (+0.5)
         if expected and expected.expected_evidence:
             overlap = len(set(e[:20] for e in expected.expected_evidence) &
                           set(e.get("chunk_id","")[:20] for e in trace.evidence_items))
             details["expected_evidence_overlap"] = overlap
-            if overlap == 0:
-                score -= 1.0
+            if overlap > 0:
+                score += 0.5
+            else:
                 failures.append("No overlap with expected evidence")
 
-        return DimensionScore("answer", max(0, score), 5.0, details, failures)
+        return DimensionScore("answer", min(score, 5.0), 5.0, details, failures)
 
     def _score_efficiency(self, trace: QueryTrace) -> DimensionScore:
-        score = 5.0
+        score = 0.0
         failures = []
         details = {}
         latency = trace.total_latency_ms
@@ -201,16 +238,28 @@ class EvaluationEngine:
         details["latency_ms"] = latency
         details["tool_calls"] = tc
 
-        if latency > 5000:
-            score -= 2.0
+        # Latency (+2 fast, +1 moderate, 0 slow)
+        if 0 < latency <= 2000:
+            score += 2.0
+        elif latency <= 5000:
+            score += 1.0
+            failures.append("Moderate latency")
+        elif latency > 5000:
             failures.append("High latency")
-        elif latency > 2000:
-            score -= 1.0
-        if tc > 10:
-            score -= 1.0
+
+        # Tool call sanity (+2 reasonable, +1 borderline, 0 excessive)
+        if 0 < tc <= 10:
+            score += 2.0
+        elif tc == 0:
+            pass  # already penalized in _score_tools
+        else:
+            score += 1.0
             failures.append("Excessive tool calls")
 
-        return DimensionScore("efficiency", max(0, score), 5.0, details, failures)
+        # +1 baseline credit for completing the turn at all
+        score += 1.0
+
+        return DimensionScore("efficiency", min(score, 5.0), 5.0, details, failures)
 
     def _generate_diagnosis(self, dims: Dict[str, DimensionScore], failures: List[str]) -> str:
         if not failures:
