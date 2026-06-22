@@ -35,6 +35,11 @@ def _get_jieba():
         jieba.setLogLevel(20)
         return jieba
     except ImportError:
+        logger.warning(
+            "jieba not installed — falling back to regex 2-3 gram Chinese "
+            "tokenizer. Retrieval recall for domain terms may be reduced. "
+            "Install with: pip install jieba"
+        )
         return None
 
 

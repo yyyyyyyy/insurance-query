@@ -33,6 +33,12 @@ def _create_app() -> FastAPI:
         # immediately. ``_ensure_knowledge`` is idempotent and guards on
         # ``_knowledge_loaded``, so the first real query will simply wait
         # for or join the in-flight warmup.
+        #
+        # NOTE: the thread is a daemon so it never blocks process exit. This
+        # is safe today because warmup builds in-memory structures only. If
+        # warmup ever writes persistent artifacts (e.g. a chromadb index to
+        # disk), switch to a non-daemon thread with a graceful shutdown
+        # signal to avoid leaving half-written files behind.
         import threading
 
         def _warmup():
@@ -61,6 +67,10 @@ def _cors_origins() -> list:
     Accepts a comma-separated list, e.g.
     ``CORS_ORIGINS=https://app.example.com,https://staging.example.com``.
     Falls back to the local development origins when unset.
+
+    NOTE: evaluated once at module import time, so the env var must be set
+    before the app starts (standard for containerized deployments). Hot
+    reconfiguration at runtime is not supported.
     """
     import os
     raw = os.environ.get("CORS_ORIGINS", "").strip()

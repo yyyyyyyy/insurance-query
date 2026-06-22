@@ -290,11 +290,17 @@ class MultiAgentEngine:
         with batch_ctx:
             self.event_store.begin_batch()
             try:
-                return self._run_query(
+                result = self._run_query(
                     query_text, session_id, trace_id, t0,
                 )
-            finally:
-                self.event_store.commit_batch()
+            except Exception:
+                # On failure, roll back any half-written events so the
+                # event store never persists an incomplete query turn
+                # (event-sourcing atomicity: all events or none).
+                self.event_store.rollback_batch()
+                raise
+            self.event_store.commit_batch()
+            return result
 
     def _run_query(
         self,

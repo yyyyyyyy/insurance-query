@@ -41,13 +41,32 @@ class _RequestIdLogFilter(logging.Filter):
 def install_log_filter() -> None:
     """Attach the request_id filter to the root logger (idempotent).
 
-    Call once at application startup so Uvicorn's access log and any
-    application loggers automatically gain a ``request_id`` attribute.
+    Also ensures at least one handler can render the ``request_id`` field —
+    the filter injects the attribute on every record, but without a
+    formatter that references ``%(request_id)s`` the correlation ID would
+    never actually appear in log output. Existing user-configured handlers
+    are left untouched.
     """
     root = logging.getLogger()
-    has = any(isinstance(f, _RequestIdLogFilter) for f in root.filters)
-    if not has:
+    if not any(isinstance(f, _RequestIdLogFilter) for f in root.filters):
         root.addFilter(_RequestIdLogFilter())
+
+    # If no handler is configured to render request_id, add a default
+    # console handler that does so the correlation ID is observable.
+    fmt = "%(asctime)s [%(request_id)s] %(name)s %(levelname)s %(message)s"
+    needs_default = True
+    for h in root.handlers:
+        f = h.formatter
+        if f and f._fmt and "%(request_id)s" in f._fmt:
+            needs_default = False
+            break
+    if needs_default and not any(
+        getattr(h, "_request_id_default", False) for h in root.handlers
+    ):
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(fmt))
+        handler._request_id_default = True  # type: ignore[attr-defined]
+        root.addHandler(handler)
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):

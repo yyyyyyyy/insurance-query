@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 # Pronouns / deixis that signal a follow-up question referring to a
 # previous turn's subject. ``其`` alone is too common in Chinese (means
 # "its/their" in many unrelated contexts), so we require the explicit
-# compounds ``其中`` / ``其它`` / ``其他`` instead. ``还有`` is kept but
-# only triggers when paired with a product-ref marker in
-# resolve_query (see is_follow_up logic) so false positives stay low.
+# compounds ``其中`` / ``其它`` / ``其他`` instead. ``还有`` was removed
+# because it appears frequently in non-anaphoric questions (e.g.
+# "还有没有别的险种") and produced too many false positives.
 FOLLOW_UP_MARKERS = re.compile(
     r"(它|那个|这个|刚才|上一个|之前|前述|该产?品|其中|其它|其他|同样)"
 )

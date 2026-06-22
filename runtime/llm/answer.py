@@ -219,8 +219,10 @@ def _compute_confidence(intent_result: Dict[str, Any], evidence: List[Dict[str, 
     intent_conf = intent_result.get("confidence", 0.5)
 
     if not evidence:
-        # No evidence — the answer is essentially ungrounded.
-        return round(max(intent_conf * 0.2, 0.1), 2)
+        # No evidence — the answer is essentially ungrounded. Keep the
+        # floor at 0.0 so downstream consumers cannot read a hallucinated
+        # answer as "the system is somewhat confident".
+        return 0.0
 
     count_factor = min(len(evidence) / 5.0, 1.0)
 
