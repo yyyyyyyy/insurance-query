@@ -42,13 +42,14 @@ jobs:
       - name: Type check with mypy (non-blocking during rollout)
         continue-on-error: true
         run: |
-          mypy runtime evaluation --config-file mypy.ini
+          mypy runtime evaluation
 
       - name: Run tests
         run: |
           pytest tests/ -q --tb=short --timeout=60
         env:
           LLM_ENABLED: false
+          EMBEDDING_FAST_MODE: true
 
       - name: Verify imports
         run: |
