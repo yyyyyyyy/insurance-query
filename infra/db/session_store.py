@@ -132,13 +132,21 @@ class WorkingMemory:
         self._cache[session_id] = ctx
         return ctx
 
-    def save(self, session_id: str, ctx: Optional[SessionContext] = None):
-        """Persist session context to DB."""
+    def save(self, session_id: str, ctx: Optional[SessionContext] = None, *, increment_turn: bool = False):
+        """Persist session context to DB.
+
+        Args:
+            increment_turn: When True, increment query_count. Only the
+                query-completion path (update_from_query) should set this;
+                internal mutations (add_facts, set_active_process) must not,
+                otherwise turn_count balloons per single query.
+        """
         ctx = ctx or self._cache.get(session_id)
         if not ctx:
             return
 
-        ctx.query_count += 1
+        if increment_turn:
+            ctx.query_count += 1
         now = datetime.now(timezone.utc).isoformat()
 
         self._conn.execute(
@@ -178,7 +186,7 @@ class WorkingMemory:
         ctx.last_entities = entities or []
         ctx.last_answer = answer
 
-        self.save(session_id, ctx)
+        self.save(session_id, ctx, increment_turn=True)
 
     def get_context_for_query(self, session_id: str) -> Dict[str, Any]:
         """Get relevant context to enrich the next query."""

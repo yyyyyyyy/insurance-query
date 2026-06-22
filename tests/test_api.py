@@ -117,10 +117,18 @@ class TestHealthEndpoint:
 class TestEventsEndpoint:
     """Test GET /events debug endpoint."""
 
-    def test_events_endpoint(self):
+    def test_events_endpoint(self, monkeypatch):
+        # /events is gated behind DEBUG_ENDPOINTS to avoid leaking internal
+        # agent messages in production.
+        monkeypatch.setenv("DEBUG_ENDPOINTS", "1")
         client.post("/query", json={"query": "event test"})
         response = client.get("/events")
         assert response.status_code == 200
         data = response.json()
         assert "message_count" in data
         assert data["message_count"] > 0
+
+    def test_events_endpoint_disabled_by_default(self):
+        # Without DEBUG_ENDPOINTS, the endpoint should not expose data.
+        response = client.get("/events")
+        assert response.status_code == 404

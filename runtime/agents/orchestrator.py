@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from contextlib import nullcontext as _nullcontext
 from typing import Any, Dict, List, Optional
 
 from runtime.agents.bus import AgentBus, AgentMessage, AgentContext
@@ -88,6 +89,18 @@ class MultiAgentEngine:
         if not events:
             return 1
         return max(e.sequence_number for e in events) + 1
+
+    def _acquire_session_lock(self, session_id: str):
+        """Return the per-session lock if the store provides one, else None.
+
+        Holding this lock across one full query() turn serializes concurrent
+        turns on the same session, preventing duplicate sequence numbers and
+        event-store races (S1).
+        """
+        getter = getattr(self.event_store, "_session_lock", None)
+        if callable(getter):
+            return getter(session_id)
+        return None
 
     def _materialize_cache_hit_response(
         self,
@@ -266,6 +279,33 @@ class MultiAgentEngine:
         session_id = session_id or str(uuid.uuid4())
         trace_id = f"TRC-{uuid.uuid4().hex[:12]}"
         t0 = time.perf_counter()
+
+        # Serialize concurrent turns on the same session (S1) and batch all
+        # event-store writes into a single transaction (S2).
+        session_lock = self._acquire_session_lock(session_id)
+        batch_ctx = _nullcontext()
+        if session_lock is not None:
+            batch_ctx = session_lock
+        batch_supported = hasattr(self.event_store, "begin_batch")
+
+        with batch_ctx:
+            if batch_supported:
+                self.event_store.begin_batch()
+            try:
+                return self._run_query(
+                    query_text, session_id, trace_id, t0,
+                )
+            finally:
+                if batch_supported:
+                    self.event_store.commit_batch()
+
+    def _run_query(
+        self,
+        query_text: str,
+        session_id: str,
+        trace_id: str,
+        t0: float,
+    ) -> Dict[str, Any]:
         seq = 0
 
         # --- Memory resolve (before cache — session-aware key) ---

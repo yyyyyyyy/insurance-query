@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -47,14 +48,33 @@ class SqliteEventStore(EventStore):
 
     Inherits all in-memory methods from EventStore and adds automatic
     persistence. Events are loaded from SQLite on initialization.
+
+    Thread safety: a per-session reentrant lock serializes append/seq
+    operations so concurrent FastAPI requests on the same session cannot
+    produce duplicate or out-of-order sequence numbers. A global write
+    lock guards SQLite writes (sqlite3 connections are not safe for
+    concurrent use from multiple threads without serialization).
     """
 
     def __init__(self, db_path: str = "data/events.db"):
         super().__init__()
         self.db_path = db_path
         self._conn: Optional[sqlite3.Connection] = None
+        self._write_lock = threading.RLock()
+        self._session_locks: Dict[str, threading.RLock] = {}
+        self._session_locks_guard = threading.Lock()
+        self._batch_depth = 0
         self._init_db()
         self._load_existing_events()
+
+    def _session_lock(self, session_id: str) -> threading.RLock:
+        """Get or create a per-session reentrant lock."""
+        with self._session_locks_guard:
+            lock = self._session_locks.get(session_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._session_locks[session_id] = lock
+            return lock
 
     def _init_db(self):
         """Initialize SQLite database and schema."""
@@ -101,28 +121,64 @@ class SqliteEventStore(EventStore):
                        loaded, self.session_count())
 
     def append(self, event: Event) -> Event:
-        """Append event to both SQLite and in-memory store."""
-        # Persist to SQLite first
-        if self._conn:
-            try:
-                self._conn.execute(
-                    "INSERT INTO events (event_id, event_type, session_id, "
-                    "sequence_number, timestamp, payload) VALUES (?, ?, ?, ?, ?, ?)",
-                    (
-                        event.event_id,
-                        event.event_type.value,
-                        event.session_id,
-                        event.sequence_number,
-                        event.timestamp.isoformat(),
-                        json.dumps(event.payload, ensure_ascii=False),
-                    ),
-                )
-                self._conn.commit()
-            except sqlite3.IntegrityError:
-                logger.warning("Duplicate event_id: %s, skipping", event.event_id)
+        """Append event to both SQLite and in-memory store.
 
-        # Then store in memory
-        return super().append(event)
+        Thread-safe: serializes writes via _write_lock and uses a single
+        transaction so callers that append many events in a loop can opt
+        into batch commit via begin_batch()/commit_batch().
+        """
+        with self._write_lock:
+            # Persist to SQLite (deferred transaction auto-started)
+            if self._conn:
+                try:
+                    self._conn.execute(
+                        "INSERT INTO events (event_id, event_type, session_id, "
+                        "sequence_number, timestamp, payload) VALUES (?, ?, ?, ?, ?, ?)",
+                        (
+                            event.event_id,
+                            event.event_type.value,
+                            event.session_id,
+                            event.sequence_number,
+                            event.timestamp.isoformat(),
+                            json.dumps(event.payload, ensure_ascii=False),
+                        ),
+                    )
+                    # Only commit if no explicit batch transaction is active
+                    if not self._batch_depth:
+                        self._conn.commit()
+                except sqlite3.IntegrityError:
+                    logger.warning("Duplicate event_id: %s, skipping", event.event_id)
+
+            # Then store in memory
+            return super().append(event)
+
+    def begin_batch(self) -> None:
+        """Start a batch transaction to group many appends into one commit."""
+        with self._write_lock:
+            self._batch_depth += 1
+            if self._conn and self._batch_depth == 1:
+                self._conn.execute("BEGIN")
+
+    def commit_batch(self) -> None:
+        """Commit a pending batch transaction."""
+        with self._write_lock:
+            if self._batch_depth <= 0:
+                return
+            self._batch_depth -= 1
+            if self._conn and self._batch_depth == 0:
+                self._conn.commit()
+
+    def rollback_batch(self) -> None:
+        """Roll back a pending batch transaction."""
+        with self._write_lock:
+            if self._batch_depth <= 0:
+                return
+            self._batch_depth = 0
+            if self._conn:
+                try:
+                    self._conn.rollback()
+                except sqlite3.Error:
+                    pass
 
     def clear(self) -> None:
         """Clear all events from both SQLite and memory."""

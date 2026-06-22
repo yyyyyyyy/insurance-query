@@ -4,6 +4,8 @@ InsureQuery API — FastAPI Service + Runtime Console endpoints.
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -21,18 +23,37 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(
-    title="InsureQuery AI Runtime Kernel",
-    description="Production AI Runtime Infrastructure for Insurance Reasoning",
-    version="3.0.0-kernel-v2",
-)
+def _create_app() -> FastAPI:
+    """Application factory wiring engine and lifespan handlers."""
+
+    @asynccontextmanager
+    async def _lifespan(_app: FastAPI):
+        # Pre-load ontology, retriever, FAQ index, and embeddings at startup.
+        # Without this the first user query would block for several seconds
+        # building the knowledge graph and fitting BM25/embeddings.
+        try:
+            engine._ensure_knowledge()
+            logger.info("Knowledge preloaded at startup")
+        except Exception as exc:
+            logger.warning("Knowledge warmup failed (will lazy-load): %s", exc)
+        yield
+
+    return FastAPI(
+        title="InsureQuery AI Runtime Kernel",
+        description="Production AI Runtime Infrastructure for Insurance Reasoning",
+        version="3.0.0-kernel-v2",
+        lifespan=_lifespan,
+    )
+
+
+app = _create_app()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 from infra.middleware.rate_limit import RateLimitMiddleware
@@ -51,8 +72,18 @@ engine = MultiAgentEngine(
     tuner=_tuner,
 )
 
-# Last console payload per session (for full retrieval replay)
-_session_console_cache: Dict[str, Dict[str, Any]] = {}
+# Bounded LRU cache of console payloads per session, to avoid unbounded
+# memory growth in long-running processes.
+_CONSOLE_CACHE_MAX_ENTRIES = 256
+_session_console_cache: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+
+
+def _cache_console(session_id: str, payload: Dict[str, Any]) -> None:
+    """Store a console payload in the LRU cache, evicting oldest if needed."""
+    _session_console_cache[session_id] = payload
+    _session_console_cache.move_to_end(session_id)
+    while len(_session_console_cache) > _CONSOLE_CACHE_MAX_ENTRIES:
+        _session_console_cache.popitem(last=False)
 
 
 class QueryRequest(BaseModel):
@@ -78,6 +109,7 @@ def _rebuild_console_from_session(session_id: str) -> Dict[str, Any]:
 
     if session_id in _session_console_cache:
         cached = _session_console_cache[session_id]
+        _session_console_cache.move_to_end(session_id)
         cached["event_trace"] = events
         cached["trace"] = build_console_payload({**cached, "event_trace": events})["trace"]
         return cached
@@ -101,7 +133,7 @@ async def process_query(request: QueryRequest):
         _working_memory.get_context_for_query(result["session_id"]) if _working_memory else {}
     )
     console = build_console_payload(result, wm)
-    _session_console_cache[result["session_id"]] = console
+    _cache_console(result["session_id"], console)
     return console
 
 
@@ -131,17 +163,33 @@ async def get_session(session_id: str):
 
 @app.post("/query/stream", tags=["Runtime"])
 async def process_query_stream(request: QueryRequest):
+    """Stream query results as Server-Sent Events.
+
+    NOTE: this endpoint runs the full pipeline to completion and then emits
+    phase events, so overall latency matches ``POST /query``. The advantage
+    is that clients receive a heartbeat while waiting (avoiding proxy idle
+    timeouts) and structured phase events instead of a single JSON blob.
+    """
     import json as _json
     import asyncio
 
     async def event_stream():
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
+        # Run the blocking engine in a worker thread while emitting
+        # keep-alive comments so intermediate proxies don't time out.
+        task = loop.run_in_executor(
             None, engine.query, request.query, request.session_id
         )
+        while not task.done():
+            yield ": keep-alive\n\n"
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+        result = task.result()
         wm = result.get("working_memory") or {}
         console = build_console_payload(result, wm)
-        _session_console_cache[result["session_id"]] = console
+        _cache_console(result["session_id"], console)
 
         phases = [
             ("intent", {"answer_intent": result["answer"].get("intent", "")}),
@@ -154,7 +202,11 @@ async def process_query_stream(request: QueryRequest):
         for phase, data in phases:
             yield f"event: {phase}\ndata: {_json.dumps(data, ensure_ascii=False)}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/health", response_model=HealthResponse, tags=["System"])
@@ -179,9 +231,6 @@ async def system_stats():
 
 @app.get("/dashboard", tags=["System"])
 async def dashboard():
-    from infra.observability.monitor import ObservabilityLayer
-    obs = ObservabilityLayer()
-    obs.metrics.record_query(100, "init")
     return {
         "agent_statuses": engine.bus.agent_statuses(),
         "async_executor": engine.async_exec.stats(),
@@ -192,6 +241,15 @@ async def dashboard():
 
 @app.get("/events", tags=["Debug"])
 async def list_all_events():
+    # Internal agent message log may contain errors, params, and internal
+    # payloads. Gate it behind DEBUG_ENDPOINTS so it is disabled by default
+    # in production.
+    import os
+    if os.environ.get("DEBUG_ENDPOINTS", "").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(
+            status_code=404,
+            detail="Debug endpoints disabled. Set DEBUG_ENDPOINTS=1 to enable.",
+        )
     return {
         "message_count": len(engine.bus.message_log()),
         "messages": engine.bus.message_log(),
