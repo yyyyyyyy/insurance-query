@@ -50,6 +50,8 @@ class SessionContext:
     last_products: List[str] = field(default_factory=list)
     last_entities: List[str] = field(default_factory=list)
     last_answer: Dict[str, Any] = field(default_factory=dict)
+    facts: Dict[str, Any] = field(default_factory=dict)
+    active_process: Optional[str] = None
     custom: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -61,6 +63,8 @@ class SessionContext:
             "last_products": self.last_products,
             "last_entities": self.last_entities,
             "last_answer": self.last_answer,
+            "facts": self.facts,
+            "active_process": self.active_process,
             "custom": self.custom,
         }
 
@@ -77,6 +81,8 @@ class SessionContext:
             last_products=data.get("last_products", []),
             last_entities=data.get("last_entities", []),
             last_answer=data.get("last_answer", {}),
+            facts=data.get("facts", {}),
+            active_process=data.get("active_process"),
             custom=data.get("custom", {}),
         )
 
@@ -177,13 +183,44 @@ class WorkingMemory:
     def get_context_for_query(self, session_id: str) -> Dict[str, Any]:
         """Get relevant context to enrich the next query."""
         ctx = self.get_or_create(session_id)
+        product_ids = self._extract_product_ids(ctx)
         return {
             "is_follow_up": ctx.query_count > 0,
             "previous_intent": ctx.last_intent,
             "previous_products": ctx.last_products,
             "previous_entities": ctx.last_entities,
+            "previous_product_ids": product_ids,
             "turn_count": ctx.query_count,
+            "facts": dict(ctx.facts),
+            "active_process": ctx.active_process,
         }
+
+    @staticmethod
+    def _extract_product_ids(ctx: SessionContext) -> List[str]:
+        ids: List[str] = []
+        for key, val in (ctx.facts or {}).items():
+            if key.startswith("product:") and isinstance(val, dict):
+                pid = key.split(":", 1)[1]
+                if pid:
+                    ids.append(pid)
+            if key == "last_compared_products" and isinstance(val, dict):
+                ids.extend(val.get("value", []))
+            if key == "last_product_ids" and isinstance(val, dict):
+                ids.extend(val.get("value", []))
+        return list(dict.fromkeys(ids))
+
+    def add_facts(self, session_id: str, facts: Dict[str, Any]) -> None:
+        """Merge facts into session context."""
+        ctx = self.get_or_create(session_id)
+        ctx.facts.update(facts)
+        self._cache[session_id] = ctx
+        self.save(session_id, ctx)
+
+    def set_active_process(self, session_id: str, process_name: Optional[str]) -> None:
+        ctx = self.get_or_create(session_id)
+        ctx.active_process = process_name
+        self._cache[session_id] = ctx
+        self.save(session_id, ctx)
 
     def delete(self, session_id: str):
         """Delete a session."""

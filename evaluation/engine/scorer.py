@@ -80,13 +80,15 @@ class EvaluationEngine:
         failures = []
         details = {}
         ev_count = trace.evidence_count
+        accepted = trace.accepted_evidence_count
         rr = trace.retrieval_results
 
-        # Evidence must exist
-        if ev_count == 0:
+        # Evidence must exist (prefer accepted count from EVIDENCE_SELECTED)
+        effective_count = accepted if accepted > 0 else ev_count
+        if effective_count == 0:
             score -= 3.0
             failures.append("No evidence retrieved")
-        elif ev_count < 3:
+        elif effective_count < 3:
             score -= 1.0
             failures.append("Low evidence count")
 
@@ -94,11 +96,12 @@ class EvaluationEngine:
         onto_hits = sum(1 for r in rr if r.get("ontology_used", False))
         onto_rate = onto_hits / max(len(rr), 1)
         details["ontology_hit_rate"] = round(onto_rate, 2)
+        details["accepted_evidence_count"] = accepted
 
         # Result count
         total_retrieved = sum(r.get("result_count", 0) for r in rr)
         details["total_retrieved"] = total_retrieved
-        if total_retrieved == 0:
+        if total_retrieved == 0 and not rr:
             score -= 2.0
             failures.append("Zero retrieval results")
 

@@ -21,6 +21,7 @@ class EventType(str, Enum):
     PLAN_CREATED = "PLAN_CREATED"
     TOOL_CALLED = "TOOL_CALLED"
     EVIDENCE_FOUND = "EVIDENCE_FOUND"
+    EVIDENCE_SELECTED = "EVIDENCE_SELECTED"
     ANSWER_GENERATED = "ANSWER_GENERATED"
     # Sprint 3: Knowledge Layer events
     CHUNK_CREATED = "CHUNK_CREATED"
@@ -41,6 +42,12 @@ class EventType(str, Enum):
     CACHE_MISS = "CACHE_MISS"
     SYSTEM_RETRY = "SYSTEM_RETRY"
     SYSTEM_DEGRADED = "SYSTEM_DEGRADED"
+    # v2 Kernel events
+    MEMORY_UPDATED = "MEMORY_UPDATED"
+    TOOL_EXECUTED = "TOOL_EXECUTED"
+    PROCESS_EXECUTED = "PROCESS_EXECUTED"
+    RULE_EVALUATED = "RULE_EVALUATED"
+    TUNING_APPLIED = "TUNING_APPLIED"
 
 
 class Event(ABC):
@@ -189,6 +196,30 @@ def evidence_found_event(
     )
 
 
+def evidence_selected_event(
+    session_id: str,
+    sequence_number: int,
+    accepted_ids: List[str],
+    rejected_ids: List[str],
+    threshold: float,
+    snapshot: Optional[List[Dict[str, Any]]] = None,
+    **kwargs,
+) -> Event:
+    """Create an EVIDENCE_SELECTED event (candidate → accepted gate)."""
+    return Event(
+        event_type=EventType.EVIDENCE_SELECTED,
+        session_id=session_id,
+        sequence_number=sequence_number,
+        payload={
+            "accepted_ids": accepted_ids,
+            "rejected_ids": rejected_ids,
+            "threshold": threshold,
+            "snapshot": snapshot or [],
+            **kwargs,
+        },
+    )
+
+
 def answer_generated_event(
     session_id: str,
     sequence_number: int,
@@ -314,6 +345,107 @@ def system_degraded_event(session_id: str, sequence_number: int,
                  payload={"reason": reason, **kwargs})
 
 
+# --- v2 Kernel Event Factories ---
+
+def memory_updated_event(
+    session_id: str,
+    sequence_number: int,
+    action: str,
+    facts: Optional[Dict[str, Any]] = None,
+    **kwargs,
+) -> Event:
+    return Event(
+        EventType.MEMORY_UPDATED,
+        session_id,
+        sequence_number,
+        payload={"action": action, "facts": facts or {}, **kwargs},
+    )
+
+
+def tool_executed_event(
+    session_id: str,
+    sequence_number: int,
+    tool_name: str,
+    status: str,
+    duration_ms: float = 0.0,
+    fact_keys: Optional[List[str]] = None,
+    **kwargs,
+) -> Event:
+    return Event(
+        EventType.TOOL_EXECUTED,
+        session_id,
+        sequence_number,
+        payload={
+            "tool_name": tool_name,
+            "status": status,
+            "duration_ms": duration_ms,
+            "fact_keys": fact_keys or [],
+            **kwargs,
+        },
+    )
+
+
+def process_executed_event(
+    session_id: str,
+    sequence_number: int,
+    process_name: str,
+    path: List[str],
+    terminal_state: str,
+    outcome: str = "",
+    **kwargs,
+) -> Event:
+    return Event(
+        EventType.PROCESS_EXECUTED,
+        session_id,
+        sequence_number,
+        payload={
+            "process_name": process_name,
+            "path": path,
+            "terminal_state": terminal_state,
+            "outcome": outcome,
+            **kwargs,
+        },
+    )
+
+
+def rule_evaluated_event(
+    session_id: str,
+    sequence_number: int,
+    rules_evaluated: int,
+    rules_matched: int,
+    top_decisions: Optional[List[Dict[str, Any]]] = None,
+    summary: str = "",
+    **kwargs,
+) -> Event:
+    return Event(
+        EventType.RULE_EVALUATED,
+        session_id,
+        sequence_number,
+        payload={
+            "rules_evaluated": rules_evaluated,
+            "rules_matched": rules_matched,
+            "top_decisions": top_decisions or [],
+            "summary": summary,
+            **kwargs,
+        },
+    )
+
+
+def tuning_applied_event(
+    session_id: str,
+    sequence_number: int,
+    weights: Dict[str, float],
+    reason: str = "",
+    **kwargs,
+) -> Event:
+    return Event(
+        EventType.TUNING_APPLIED,
+        session_id,
+        sequence_number,
+        payload={"weights": weights, "reason": reason, **kwargs},
+    )
+
+
 # --- Append-only Event Store ---
 
 
@@ -359,6 +491,10 @@ class EventStore:
 
     def session_count(self) -> int:
         return len(self._session_index)
+
+    def list_sessions(self) -> List[str]:
+        """Return all session IDs with events."""
+        return list(self._session_index.keys())
 
     def clear(self) -> None:
         """Clear all events. Use with caution — primarily for testing."""

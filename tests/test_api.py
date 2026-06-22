@@ -88,9 +88,9 @@ class TestSessionTraceEndpoint:
         assert "agents" in data
         assert "message_log" in data
 
-    def test_get_nonexistent_session_returns_200(self):
+    def test_get_nonexistent_session_returns_404(self):
         response = client.get("/sessions/nonexistent-id")
-        assert response.status_code == 200  # Returns empty agent status
+        assert response.status_code == 404
 
     def test_reconstructed_state_matches_original(self):
         create_resp = client.post("/query", json={"query": "replay test"})

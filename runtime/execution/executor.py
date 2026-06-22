@@ -123,11 +123,16 @@ class AsyncExecutor:
                     continue
                 else:
                     self._execution_stats["failed"] += 1
+                    err_msg = "Tool execution failed"
+                    if result.error:
+                        err_msg = result.error.get("message", err_msg)
+                    elif result.status:
+                        err_msg = f"Tool status: {result.status}"
                     return AsyncResult(
                         tool_name=tool_name,
                         status=ExecutionStatus.FAILED,
                         result=result,
-                        error=result.error.get("message", "Tool execution failed"),
+                        error=err_msg,
                         attempts=attempt,
                         duration_ms=round(duration, 2),
                     )

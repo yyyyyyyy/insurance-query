@@ -90,6 +90,14 @@ class RuntimeState:
     system_health: Dict[str, Any] = field(default_factory=dict)
     failure_recovery_path: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    # v2 Kernel state
+    memory_context: Dict[str, Any] = field(default_factory=dict)
+    memory_facts: Dict[str, Any] = field(default_factory=dict)
+    process_result: Dict[str, Any] = field(default_factory=dict)
+    rule_evaluation: Dict[str, Any] = field(default_factory=dict)
+    tuning_weights: Dict[str, float] = field(default_factory=dict)
+    accepted_evidence_ids: List[str] = field(default_factory=list)
+    evidence_selection: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -150,4 +158,12 @@ class RuntimeState:
             "cache_state": self.cache_state,
             "system_health": self.system_health,
             "failure_recovery_path": self.failure_recovery_path,
+            # v2 Kernel
+            "memory_context": self.memory_context,
+            "memory_facts": self.memory_facts,
+            "process_result": self.process_result,
+            "rule_evaluation": self.rule_evaluation,
+            "tuning_weights": self.tuning_weights,
+            "accepted_evidence_ids": self.accepted_evidence_ids,
+            "evidence_selection": self.evidence_selection,
         }

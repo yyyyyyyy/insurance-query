@@ -212,27 +212,43 @@ class RuleEngine:
 
         match_reasons = []
 
-        # Check 1: Keyword matching in query text
+        # Check 1: Strict condition matching when conditions exist
+        tool_match = False
+        if conditions:
+            for cond in conditions:
+                field = cond.get("field", "")
+                if self._check_condition(cond, tool_results, evidence):
+                    match_reasons.append(f"condition_matched: {field}")
+                    tool_match = True
+            # Rules with conditions require at least one condition match
+            if not tool_match:
+                return RuleDecision(
+                    rule_id=rule.get("rule_id", ""),
+                    domain=rule.get("domain", ""),
+                    description=description,
+                    decision=then_block.get("decision", ""),
+                    action=then_block.get("action", ""),
+                    confidence=rule.get("confidence", "MEDIUM"),
+                    source=rule.get("source", ""),
+                    source_ref=rule.get("source_ref", ""),
+                    matched=False,
+                    match_reason="conditions not satisfied",
+                )
+
+        # Check 2: Keyword matching in query text (fallback when no conditions)
         keywords = self._extract_keywords(description)
         query_match = any(kw in query_text for kw in keywords if len(kw) >= 2)
 
-        # Check 2: Tool result matching
-        tool_match = False
-        for cond in conditions:
-            field = cond.get("field", "")
-            if self._check_condition(cond, tool_results, evidence):
-                match_reasons.append(f"condition_matched: {field}")
-                tool_match = True
-
-        # Check 3: Evidence content matching
+        # Check 3: Evidence content matching (fallback when no conditions)
         evidence_match = False
-        for ev in evidence[:10]:
-            ev_content = ev.get("content", "")
-            if any(kw in ev_content for kw in keywords if len(kw) >= 2):
-                evidence_match = True
-                break
+        if not conditions:
+            for ev in evidence[:10]:
+                ev_content = ev.get("content", "")
+                if any(kw in ev_content for kw in keywords if len(kw) >= 2):
+                    evidence_match = True
+                    break
 
-        matched = query_match or tool_match or evidence_match
+        matched = tool_match or query_match or evidence_match
 
         if matched:
             reason = " | ".join(match_reasons) if match_reasons else (

@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 from typing import List
 
 import numpy as np
@@ -31,10 +32,15 @@ class SentenceTransformerEmbedding:
         self._init_model()
 
     def _init_model(self):
+        if os.environ.get("EMBEDDING_FAST_MODE", "").lower() in ("1", "true"):
+            logger.info("EMBEDDING_FAST_MODE=1, skipping sentence-transformers load")
+            return
         try:
             from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer(self.model_name)
-            self._dim = self._model.get_sentence_embedding_dimension()
+            self._dim = (self._model.get_embedding_dimension()
+                          if hasattr(self._model, 'get_embedding_dimension')
+                          else self._model.get_sentence_embedding_dimension())
             self._enabled = True
             logger.info(
                 "sentence-transformers loaded: model=%s dim=%d",

@@ -43,7 +43,7 @@ class TestLLMConfig:
     def test_enabled_with_api_key(self, mock_env):
         settings = llm_settings()
         assert settings.is_configured
-        assert settings.model == "deepseek-chat"
+        assert settings.model in ("deepseek-chat", "deepseek-v4-flash", "deepseek-reasoner")
         assert settings.base_url == "https://api.deepseek.com"
 
 

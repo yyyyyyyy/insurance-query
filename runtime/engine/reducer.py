@@ -47,6 +47,7 @@ def _apply_event(state: RuntimeState, event: Event) -> None:
         EventType.PLAN_CREATED: _apply_plan_created,
         EventType.TOOL_CALLED: _apply_tool_called,
         EventType.EVIDENCE_FOUND: _apply_evidence_found,
+        EventType.EVIDENCE_SELECTED: _apply_evidence_selected,
         EventType.ANSWER_GENERATED: _apply_answer_generated,
         # Sprint 3: Knowledge Layer
         EventType.CHUNK_CREATED: _apply_chunk_created,
@@ -66,6 +67,12 @@ def _apply_event(state: RuntimeState, event: Event) -> None:
         EventType.CACHE_MISS: _apply_cache_miss,
         EventType.SYSTEM_RETRY: _apply_system_retry,
         EventType.SYSTEM_DEGRADED: _apply_system_degraded,
+        # v2 Kernel
+        EventType.MEMORY_UPDATED: _apply_memory_updated,
+        EventType.TOOL_EXECUTED: _apply_tool_executed,
+        EventType.PROCESS_EXECUTED: _apply_process_executed,
+        EventType.RULE_EVALUATED: _apply_rule_evaluated,
+        EventType.TUNING_APPLIED: _apply_tuning_applied,
     }
 
     handler = handlers.get(event.event_type)
@@ -132,6 +139,16 @@ def _apply_evidence_found(state: RuntimeState, event: Event) -> None:
 
     if all(s.status == "completed" for s in state.plan):
         state.status = "answering"
+
+
+def _apply_evidence_selected(state: RuntimeState, event: Event) -> None:
+    state.accepted_evidence_ids = list(event.payload.get("accepted_ids", []))
+    state.evidence_selection = {
+        "accepted_ids": event.payload.get("accepted_ids", []),
+        "rejected_ids": event.payload.get("rejected_ids", []),
+        "threshold": event.payload.get("threshold", 0.0),
+        "snapshot": event.payload.get("snapshot", []),
+    }
 
 
 def _apply_answer_generated(state: RuntimeState, event: Event) -> None:
@@ -234,8 +251,15 @@ def _apply_agent_completed(state: RuntimeState, event: Event) -> None:
     })
 
 def _apply_cache_hit(state: RuntimeState, event: Event) -> None:
-    state.cache_state = {"hit": True, "store": event.payload.get("store", ""),
-                         "key": event.payload.get("key", "")}
+    state.cache_state = {
+        "hit": True,
+        "store": event.payload.get("store", ""),
+        "key": event.payload.get("key", ""),
+        "source_trace_id": event.payload.get("source_trace_id", ""),
+        "source_session_id": event.payload.get("source_session_id", ""),
+        "replay_projection": event.payload.get("replay_projection", False),
+        "latency_ms": event.payload.get("latency_ms", 0),
+    }
 
 def _apply_cache_miss(state: RuntimeState, event: Event) -> None:
     state.cache_state = {"hit": False, "store": event.payload.get("store", ""),
@@ -251,6 +275,48 @@ def _apply_system_degraded(state: RuntimeState, event: Event) -> None:
     state.failure_recovery_path.append(
         f"degraded:{event.payload.get('reason','unknown')}"
     )
+
+
+# --- v2 Kernel Reducers ---
+
+def _apply_memory_updated(state: RuntimeState, event: Event) -> None:
+    action = event.payload.get("action", "")
+    facts = event.payload.get("facts", {})
+    state.memory_context["last_action"] = action
+    if facts:
+        state.memory_facts.update(facts)
+
+
+def _apply_tool_executed(state: RuntimeState, event: Event) -> None:
+    tool_name = event.payload.get("tool_name", "")
+    state.agent_execution_graph.append({
+        "agent": "tool",
+        "tool": tool_name,
+        "status": event.payload.get("status", ""),
+        "duration_ms": event.payload.get("duration_ms", 0.0),
+    })
+
+
+def _apply_process_executed(state: RuntimeState, event: Event) -> None:
+    state.process_result = {
+        "process_name": event.payload.get("process_name", ""),
+        "path": event.payload.get("path", []),
+        "terminal_state": event.payload.get("terminal_state", ""),
+        "outcome": event.payload.get("outcome", ""),
+    }
+
+
+def _apply_rule_evaluated(state: RuntimeState, event: Event) -> None:
+    state.rule_evaluation = {
+        "rules_evaluated": event.payload.get("rules_evaluated", 0),
+        "rules_matched": event.payload.get("rules_matched", 0),
+        "top_decisions": event.payload.get("top_decisions", []),
+        "summary": event.payload.get("summary", ""),
+    }
+
+
+def _apply_tuning_applied(state: RuntimeState, event: Event) -> None:
+    state.tuning_weights = dict(event.payload.get("weights", {}))
 
 
 def replay_state(store, session_id: str) -> RuntimeState:

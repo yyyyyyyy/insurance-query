@@ -55,6 +55,11 @@ class AgentContext:
     system_health: Dict[str, Any] = field(default_factory=dict)
     cache_state: Dict[str, Any] = field(default_factory=dict)
     degraded_mode: bool = False
+    memory_context: Dict[str, Any] = field(default_factory=dict)
+    memory_facts: Dict[str, Any] = field(default_factory=dict)
+    process_result: Dict[str, Any] = field(default_factory=dict)
+    rule_evaluation: Dict[str, Any] = field(default_factory=dict)
+    retrieval_weights: Dict[str, float] = field(default_factory=dict)
     def to_dict(self): return {"session_id":self.session_id,"query":self.query,
         "trace_id":self.trace_id,"intent":self.intent,"plan":self.plan,
         "execution_graph":self.execution_graph,"failure_recovery_path":self.failure_recovery_path,

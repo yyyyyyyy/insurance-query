@@ -9,7 +9,8 @@ from evaluation.engine.scorer import EvaluationEngine
 from evaluation.hallucination.detector import HallucinationDetector
 from evaluation.feedback.loop import FeedbackLoop
 from evaluation.datasets.samples import EvalSample, EVAL_DATASET
-from knowledge.engine import KnowledgeEngine
+from runtime.agents.orchestrator import MultiAgentEngine
+from runtime.engine.reducer import replay_state
 
 @dataclass
 class BatchEvalResult:
@@ -27,7 +28,7 @@ class BatchEvalResult:
                 "per_sample":self.per_sample,"system_feedback":self.system_feedback}
 
 class EvalRunner:
-    def __init__(self, engine: KnowledgeEngine):
+    def __init__(self, engine: MultiAgentEngine):
         self.engine = engine
         self.trace_capture = TraceCapture()
         self.eval_engine = EvaluationEngine()
@@ -52,9 +53,12 @@ class EvalRunner:
                 result = self.engine.query(sample.question)
                 latency = (time.perf_counter() - t0) * 1000
 
+                events = result.get("event_trace", [])
+                state = replay_state(self.engine.event_store, result["session_id"]).to_dict()
+
                 trace = self.trace_capture.capture(
                     result["session_id"], sample.question,
-                    result["trace"], result["state"], latency)
+                    events, state, latency)
 
                 eval_result = self.eval_engine.evaluate(trace, sample)
                 hal_report = self.hal_detector.detect(trace)

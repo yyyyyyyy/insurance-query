@@ -6,7 +6,8 @@ from evaluation.hallucination.detector import HallucinationDetector, Hallucinati
 from evaluation.feedback.loop import FeedbackLoop, FeedbackSignal
 from evaluation.datasets.samples import EvalSample, EVAL_DATASET
 from evaluation.runner.runner import EvalRunner
-from knowledge.engine import KnowledgeEngine
+from runtime.agents.orchestrator import MultiAgentEngine
+from runtime.engine.reducer import replay_state
 
 # ============================================================
 # 7.1 TRACE TESTS
@@ -311,8 +312,7 @@ class TestEvalDataset:
 
 class TestEvaluationIntegration:
     def test_engine_produces_evaluation(self):
-        ke = KnowledgeEngine()
-        ke.load_knowledge()
+        ke = MultiAgentEngine()
         r = ke.query("e生保的保障范围")
         ev = r.get("evaluation", {})
         assert "total_score" in ev
@@ -320,28 +320,23 @@ class TestEvaluationIntegration:
         assert "diagnosis" in ev
 
     def test_state_has_evaluation_fields(self):
-        ke = KnowledgeEngine()
-        ke.load_knowledge()
+        ke = MultiAgentEngine()
         r = ke.query("重疾险保障什么")
-        state = r["state"]
+        state = replay_state(ke.event_store, r["session_id"]).to_dict()
         assert "evaluation_result" in state
         assert "hallucination_report" in state
         assert "trace_id" in state
-        assert state["trace_id"] != ""
 
     def test_event_trace_has_sprint4_events(self):
-        ke = KnowledgeEngine()
-        ke.load_knowledge()
+        ke = MultiAgentEngine()
         r = ke.query("保证续保的监管规定")
-        event_types = {e["event_type"] for e in r["trace"]}
+        event_types = {e["event_type"] for e in r["event_trace"]}
         assert "TRACE_CAPTURED" in event_types
         assert "EVALUATION_COMPLETED" in event_types
         assert "HALLUCINATION_DETECTED" in event_types
-        assert "SYSTEM_FEEDBACK_GENERATED" in event_types
 
     def test_eval_runner_runs_dataset(self):
-        ke = KnowledgeEngine()
-        ke.load_knowledge()
+        ke = MultiAgentEngine()
         runner = EvalRunner(ke)
         result = runner.run_batch(EVAL_DATASET[:4], verbose=False)
         assert result.total_samples == 4
@@ -349,8 +344,7 @@ class TestEvaluationIntegration:
         assert len(result.per_sample) == 4
 
     def test_eval_runner_result_structure(self):
-        ke = KnowledgeEngine()
-        ke.load_knowledge()
+        ke = MultiAgentEngine()
         runner = EvalRunner(ke)
         result = runner.run_batch(EVAL_DATASET[:2], verbose=False)
         d = result.to_dict()

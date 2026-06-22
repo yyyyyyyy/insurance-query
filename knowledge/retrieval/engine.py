@@ -124,11 +124,17 @@ class HybridRetriever:
                  ontology_context: Optional[List[str]] = None,
                  document_types: Optional[List[str]] = None,
                  bm25_weight: float = 0.4, vector_weight: float = 0.4,
-                 ontology_boost: float = 0.2) -> List[Tuple[Chunk, float]]:
+                 ontology_boost: float = 0.2,
+                 min_score: float = 0.0) -> List[Tuple[Chunk, float, Dict[str, Any]]]:
         if not self._fitted:
             self.fit()
 
         query_vec = self.embedding_gen.encode(query)
+        weights = {
+            "bm25": bm25_weight,
+            "vector": vector_weight,
+            "ontology": ontology_boost,
+        }
 
         # Expand query via ontology
         ontology_entities: Set[str] = set()
@@ -181,7 +187,15 @@ class HybridRetriever:
                     onto_score = min(overlap / len(ontology_entities), 0.3)
 
             total = bm25_weight * bm25_score + vector_weight * vector_score + ontology_boost * onto_score
-            scores.append((chunk, total))
+            if total >= min_score:
+                feature_contribution = {
+                    "bm25": round(bm25_score, 6),
+                    "vector": round(float(vector_score), 6),
+                    "ontology": round(onto_score, 6),
+                    "weights": weights,
+                    "total": round(total, 6),
+                }
+                scores.append((chunk, total, feature_contribution))
 
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
@@ -191,5 +205,6 @@ class HybridRetriever:
         return [{
             "chunk_id": c.chunk_id, "document_id": c.document_id,
             "content": c.content, "clause": c.clause,
-            "score": round(s, 4), "source_type": "hybrid_retrieval"
-        } for c, s in results]
+            "score": round(s, 4), "source_type": "hybrid_retrieval",
+            "feature_contribution": fc,
+        } for c, s, fc in results]

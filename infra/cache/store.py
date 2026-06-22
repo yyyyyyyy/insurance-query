@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 @dataclass
 class CacheEntry:
@@ -39,6 +39,18 @@ class TraceAwareCache:
         self._stats[store]["hits"] += 1
         return e.value, True
 
+    def get_entry_meta(self, store: str, key: str) -> Dict[str, Any]:
+        """Metadata for a cache entry (for causal replay on CACHE_HIT)."""
+        e = self._stores.get(store, {}).get(key)
+        if not e:
+            return {}
+        return {
+            "trace_id": e.trace_id,
+            "key": e.key,
+            "hit_count": e.hit_count,
+            "created_at": e.created_at,
+        }
+
     def set(self, store, key, value, trace_id="", ttl=None):
         if store not in self._stores:
             return
@@ -55,7 +67,10 @@ class TraceAwareCache:
                 self._stores[s].clear()
         return count
 
-    def query_key(self, query): return hashlib.md5(f"q:{query}".encode()).hexdigest()[:16]
+    def query_key(self, query, session_id: str = ""): 
+        if session_id:
+            return hashlib.md5(f"q:{query}:{session_id}".encode()).hexdigest()[:16]
+        return hashlib.md5(f"q:{query}".encode()).hexdigest()[:16]
     def retrieval_key(self, query): return hashlib.md5(f"r:{query}".encode()).hexdigest()[:16]
     def tool_key(self, tool, params): return hashlib.md5(f"t:{tool}:{sorted(str(params))}".encode()).hexdigest()[:16]
     def evaluation_key(self, tid): return f"ev:{tid}"

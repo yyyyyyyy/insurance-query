@@ -47,6 +47,7 @@ class QueryTrace:
     total_latency_ms: float = 0.0
     tool_call_count: int = 0
     evidence_count: int = 0
+    accepted_evidence_count: int = 0
     ontology_entities_used: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -67,6 +68,7 @@ class QueryTrace:
             "total_latency_ms": self.total_latency_ms,
             "tool_call_count": self.tool_call_count,
             "evidence_count": self.evidence_count,
+            "accepted_evidence_count": self.accepted_evidence_count,
             "ontology_entities_used": self.ontology_entities_used,
         }
 
@@ -118,7 +120,9 @@ class TraceCapture:
             et = event.get("event_type", "")
             payload = event.get("payload", {})
 
-            if et == "PLAN_CREATED":
+            if et == "INTENT_CLASSIFIED":
+                trace.intent = payload
+            elif et == "PLAN_CREATED":
                 trace.plan_steps = payload.get("plan", [])
             elif et == "TOOL_CALLED":
                 trace.tool_calls.append({
@@ -129,14 +133,43 @@ class TraceCapture:
             elif et == "EVIDENCE_FOUND":
                 ev_items = payload.get("evidence", [])
                 trace.evidence_items.extend(ev_items)
+            elif et == "EVIDENCE_SELECTED":
+                trace.accepted_evidence_count = len(payload.get("accepted_ids", []))
+                for snap in payload.get("snapshot", []):
+                    if snap.get("stage") == "accepted":
+                        trace.evidence_items.append(snap.get("payload", snap))
             elif et == "RETRIEVAL_EXECUTED":
                 trace.retrieval_results.append({
                     "query": payload.get("query", ""),
+                    "base_query": payload.get("base_query", ""),
                     "result_count": payload.get("result_count", 0),
                     "ontology_used": payload.get("ontology_used", False),
+                    "decision_trace": payload.get("decision_trace", []),
                 })
+            elif et == "CACHE_HIT":
+                trace.retrieval_results.append({
+                    "query": payload.get("key", ""),
+                    "result_count": 0,
+                    "ontology_used": False,
+                    "from_cache": True,
+                    "source_trace_id": payload.get("source_trace_id", ""),
+                })
+            elif et == "ANSWER_GENERATED":
+                trace.final_answer = {
+                    "text": payload.get("answer", ""),
+                    "citations": payload.get("citations", []),
+                    "confidence": payload.get("confidence"),
+                }
 
-        trace.evidence_count = len(trace.evidence_items)
+        if not trace.final_answer and state.get("answer"):
+            trace.final_answer = state.get("answer") or {}
+        if not trace.intent and state.get("intent"):
+            trace.intent = state.get("intent") or {}
+
+        trace.evidence_count = max(
+            len(trace.evidence_items),
+            trace.accepted_evidence_count,
+        )
         self._traces[trace.trace_id] = trace
         return trace
 

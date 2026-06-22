@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from runtime.llm.client import DeepSeekClient, LLMClientError, get_client
 from runtime.llm.config import llm_settings
@@ -27,6 +27,9 @@ def _build_answer_context(
     intent_type: str,
     tool_outputs: Dict[str, Any],
     evidence: List[Dict[str, Any]],
+    process_result: Optional[Dict[str, Any]] = None,
+    rule_evaluation: Optional[Dict[str, Any]] = None,
+    memory_context: Optional[Dict[str, Any]] = None,
 ) -> str:
     evidence_brief = [
         {
@@ -43,6 +46,9 @@ def _build_answer_context(
             "tool_outputs": tool_outputs,
             "evidence": evidence_brief,
             "evidence_count": len(evidence),
+            "process_result": process_result,
+            "matched_rules": (rule_evaluation or {}).get("top_decisions", []),
+            "memory_context": memory_context,
         },
         ensure_ascii=False,
         indent=2,
@@ -55,9 +61,15 @@ def llm_compose_answer(
     tool_outputs: Dict[str, Any],
     evidence: List[Dict[str, Any]],
     client: DeepSeekClient | None = None,
+    process_result: Optional[Dict[str, Any]] = None,
+    rule_evaluation: Optional[Dict[str, Any]] = None,
+    memory_context: Optional[Dict[str, Any]] = None,
 ) -> str:
     client = client or get_client()
-    context = _build_answer_context(query_text, intent_type, tool_outputs, evidence)
+    context = _build_answer_context(
+        query_text, intent_type, tool_outputs, evidence,
+        process_result, rule_evaluation, memory_context,
+    )
     return client.chat(
         [
             {"role": "system", "content": ANSWER_SYSTEM_PROMPT},
@@ -67,9 +79,23 @@ def llm_compose_answer(
     )
 
 
-def _template_answer(query_text, intent_type, tool_outputs, evidence):
+def _template_answer(
+    query_text,
+    intent_type,
+    tool_outputs,
+    evidence,
+    process_result=None,
+    rule_evaluation=None,
+    memory_context=None,
+):
     """Template-based answer composition (self-contained, no cross-file imports)."""
     lines = [f"查询: {query_text}", ""]
+
+    if memory_context:
+        prev = memory_context.get("previous_products", [])
+        if prev and prev[0] not in query_text:
+            lines.append(f"*上下文产品: {', '.join(prev[:2])}*")
+            lines.append("")
 
     if intent_type == "product_comparison":
         comp = tool_outputs.get("compare", {}).get("comparison", {})
@@ -134,6 +160,21 @@ def _template_answer(query_text, intent_type, tool_outputs, evidence):
         for prod in prod_data.get("products", []):
             lines.append(f"- {prod['name']} ({prod.get('product_type','')}) — {prod.get('company','')}")
 
+    if process_result and process_result.get("outcome"):
+        lines.append("")
+        lines.append("## 流程结论")
+        lines.append(process_result.get("outcome", ""))
+
+    matched_rules = []
+    if rule_evaluation:
+        matched_rules = rule_evaluation.get("top_decisions", []) or []
+    if matched_rules:
+        lines.append("")
+        lines.append("## 规则判定")
+        for r in matched_rules[:5]:
+            reason = r.get("reason", r.get("message", r.get("decision", "")))
+            lines.append(f"- {reason}")
+
     if evidence:
         lines.append("")
         lines.append("---")
@@ -177,13 +218,27 @@ def compose_answer_auto(
     intent_type: str,
     tool_outputs: Dict[str, Any],
     evidence: List[Dict[str, Any]],
+    process_result: Optional[Dict[str, Any]] = None,
+    rule_evaluation: Optional[Dict[str, Any]] = None,
+    memory_context: Optional[Dict[str, Any]] = None,
 ) -> str:
     settings = llm_settings()
+    kwargs = {
+        "process_result": process_result,
+        "rule_evaluation": rule_evaluation,
+        "memory_context": memory_context,
+    }
     if not settings.answer_llm_active:
-        return _template_answer(query_text, intent_type, tool_outputs, evidence)
+        return _template_answer(
+            query_text, intent_type, tool_outputs, evidence, **kwargs,
+        )
 
     try:
-        return llm_compose_answer(query_text, intent_type, tool_outputs, evidence)
+        return llm_compose_answer(
+            query_text, intent_type, tool_outputs, evidence, **kwargs,
+        )
     except (LLMClientError, ValueError, TypeError) as exc:
         logger.warning("LLM answer composition failed, using templates: %s", exc)
-        return _template_answer(query_text, intent_type, tool_outputs, evidence)
+        return _template_answer(
+            query_text, intent_type, tool_outputs, evidence, **kwargs,
+        )

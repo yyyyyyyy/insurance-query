@@ -1,19 +1,13 @@
 """
-InsureQuery API — FastAPI Service
-
-Endpoint:
-    POST /query           — Process an insurance query
-    GET  /sessions/{id}   — Retrieve session trace
-    GET  /health          — Health check
-
-This is the entry point of the InsureQuery AI Runtime Kernel.
+InsureQuery API — FastAPI Service + Runtime Console endpoints.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -22,6 +16,7 @@ from runtime.agents.orchestrator import MultiAgentEngine
 from infra.db.event_store import SqliteEventStore
 from infra.db.session_store import WorkingMemory
 from evaluation.feedback.tuner import SelfTuner
+from apps.api.console_helpers import build_console_payload
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,19 +24,23 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="InsureQuery AI Runtime Kernel",
     description="Production AI Runtime Infrastructure for Insurance Reasoning",
-    version="2.0.0-sprint8",
+    version="3.0.0-kernel-v2",
 )
 
-# Rate limiting middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 from infra.middleware.rate_limit import RateLimitMiddleware
 app.add_middleware(RateLimitMiddleware, rate=10, burst=30)
 
 registry = create_default_registry()
 dispatcher = ToolDispatcher(registry)
-
-# Persistence layers
 _persistent_store = SqliteEventStore(db_path="data/events.db")
-logger.info("Using SQLite-backed EventStore at data/events.db")
 _working_memory = WorkingMemory()
 _tuner = SelfTuner()
 
@@ -49,28 +48,16 @@ engine = MultiAgentEngine(
     dispatcher=dispatcher,
     event_store=_persistent_store,
     working_memory=_working_memory,
+    tuner=_tuner,
 )
 
-
-# --- Request/Response Models ---
+# Last console payload per session (for full retrieval replay)
+_session_console_cache: Dict[str, Dict[str, Any]] = {}
 
 
 class QueryRequest(BaseModel):
-    query: str = Field(..., description="Natural language insurance query", min_length=1, max_length=2000)
-    session_id: Optional[str] = Field(None, description="Optional session identifier for traceability")
-
-
-class QueryResponse(BaseModel):
-    session_id: str
-    trace_id: str = ""
-    query: str = ""
-    answer: dict
-    evaluation: dict = Field(default_factory=dict)
-    execution_graph: list = Field(default_factory=list)
-    agent_statuses: dict = Field(default_factory=dict)
-    message_log: list = Field(default_factory=list)
-    latency_ms: float = 0.0
-    cached: bool = False
+    query: str = Field(..., min_length=1, max_length=2000)
+    session_id: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
@@ -83,37 +70,67 @@ class HealthResponse(BaseModel):
     llm_model: Optional[str] = None
 
 
-# --- Endpoints ---
+def _rebuild_console_from_session(session_id: str) -> Dict[str, Any]:
+    """Rebuild console payload from persisted events + working memory."""
+    events = engine.get_session_trace(session_id)
+    if not events:
+        raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+    if session_id in _session_console_cache:
+        cached = _session_console_cache[session_id]
+        cached["event_trace"] = events
+        cached["trace"] = build_console_payload({**cached, "event_trace": events})["trace"]
+        return cached
+
+    wm = _working_memory.get_context_for_query(session_id) if _working_memory else {}
+    pseudo = {
+        "session_id": session_id,
+        "event_trace": events,
+        "execution_graph": [],
+        "memory_context": wm,
+        "working_memory": wm,
+        "tuning": engine.tuner.stats(),
+    }
+    return build_console_payload(pseudo, wm)
 
 
-@app.post("/query", response_model=QueryResponse, tags=["Runtime"])
+@app.post("/query", tags=["Runtime"])
 async def process_query(request: QueryRequest):
-    """Process an insurance query through the full runtime pipeline.
-
-    Pipeline: UserQuery → Intent → Plan → Tool Execution → Evidence → Answer
-
-    Returns the answer with full traceability via the event log.
-    """
     result = engine.query(query_text=request.query, session_id=request.session_id)
+    wm = result.get("working_memory") or (
+        _working_memory.get_context_for_query(result["session_id"]) if _working_memory else {}
+    )
+    console = build_console_payload(result, wm)
+    _session_console_cache[result["session_id"]] = console
+    return console
 
-    # Auto-tune based on evaluation
-    if result.get("evaluation"):
-        _tuner.apply_evaluation(result["evaluation"])
-        result["tuning"] = _tuner.stats()
 
-    return QueryResponse(**result)
+@app.get("/trace/{session_id}", tags=["Runtime"])
+async def get_trace(session_id: str):
+    return _rebuild_console_from_session(session_id)
+
+
+@app.get("/sessions", tags=["Runtime"])
+async def list_sessions():
+    ids = engine.event_store.list_sessions()
+    return {"sessions": ids, "count": len(ids)}
+
+
+@app.get("/sessions/{session_id}", tags=["Runtime"])
+async def get_session(session_id: str):
+    console = _rebuild_console_from_session(session_id)
+    ctx = _working_memory.get_or_create(session_id) if _working_memory else None
+    return {
+        **console,
+        "agents": engine.bus.agent_statuses(),
+        "message_log": engine.bus.message_log(),
+        "session_history": ctx.history if ctx else [],
+        "query_count": ctx.query_count if ctx else 0,
+    }
 
 
 @app.post("/query/stream", tags=["Runtime"])
 async def process_query_stream(request: QueryRequest):
-    """Serve-Sent Events (SSE) streaming endpoint.
-
-    Streams pipeline events as they happen. Returns SSE format:
-      event: phase
-      data: {"phase": "intent", ...}
-
-    Phases: intent, retrieval, tools, answer, evaluation, done
-    """
     import json as _json
     import asyncio
 
@@ -122,16 +139,18 @@ async def process_query_stream(request: QueryRequest):
         result = await loop.run_in_executor(
             None, engine.query, request.query, request.session_id
         )
+        wm = result.get("working_memory") or {}
+        console = build_console_payload(result, wm)
+        _session_console_cache[result["session_id"]] = console
 
         phases = [
             ("intent", {"answer_intent": result["answer"].get("intent", "")}),
-            ("retrieval", {"evidence_count": result["answer"].get("evidence_count", 0)}),
+            ("retrieval", {"total": console["retrieval"].get("total", 0)}),
             ("tools", {"execution_graph": result.get("execution_graph", [])}),
-            ("answer", {"text": result["answer"].get("text", ""), "confidence": result["answer"].get("confidence", 0)}),
+            ("answer", {"text": result["answer"].get("text", "")[:200]}),
             ("evaluation", {"total_score": result.get("evaluation", {}).get("total_score", 0)}),
-            ("done", {"trace_id": result.get("trace_id", "")}),
+            ("done", {"trace_id": result.get("trace_id", ""), "session_id": result.get("session_id")}),
         ]
-
         for phase, data in phases:
             yield f"event: {phase}\ndata: {_json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -140,12 +159,11 @@ async def process_query_stream(request: QueryRequest):
 
 @app.get("/health", response_model=HealthResponse, tags=["System"])
 async def health_check():
-    """System health check."""
     from runtime.llm.config import llm_settings
     llm = llm_settings()
     return HealthResponse(
         status="healthy",
-        version="2.0.0-sprint8",
+        version="3.0.0-kernel-v2",
         sessions_processed=engine.event_store.session_count(),
         total_events=engine.event_store.count(),
         llm_enabled=llm.is_configured,
@@ -156,13 +174,11 @@ async def health_check():
 
 @app.get("/stats", tags=["System"])
 async def system_stats():
-    """Multi-agent system statistics."""
     return engine.stats()
 
 
 @app.get("/dashboard", tags=["System"])
 async def dashboard():
-    """System dashboard with metrics and agent status."""
     from infra.observability.monitor import ObservabilityLayer
     obs = ObservabilityLayer()
     obs.metrics.record_query(100, "init")
@@ -170,29 +186,17 @@ async def dashboard():
         "agent_statuses": engine.bus.agent_statuses(),
         "async_executor": engine.async_exec.stats(),
         "cache": engine.cache.stats(),
-    }
-
-
-@app.get("/sessions/{session_id}", tags=["Debug"])
-async def get_session_trace(session_id: str):
-    """Retrieve agent message log and execution trace."""
-    return {
-        "session_id": session_id,
-        "agents": engine.bus.agent_statuses(),
-        "message_log": engine.bus.message_log(),
+        "tuning": engine.tuner.stats(),
     }
 
 
 @app.get("/events", tags=["Debug"])
 async def list_all_events():
-    """List agent message log (debug endpoint)."""
     return {
         "message_count": len(engine.bus.message_log()),
         "messages": engine.bus.message_log(),
     }
 
-
-# --- Entry point ---
 
 if __name__ == "__main__":
     import uvicorn
