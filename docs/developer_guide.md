@@ -8,9 +8,9 @@
 
 编辑 `knowledge_pack/products/catalog.json`，添加完整产品条目（`product_id`、`coverage`、`deductible` 等）。
 
-### 运行时目录
+### 运行时加载
 
-编辑 `runtime/tools/data.py`，向 `PRODUCT_CATALOG` 追加对应结构化记录（工具直接读取）。
+产品目录唯一入口：`knowledge_pack/products/catalog.json`。运行时通过 `runtime/tools/data_loader.load_product_catalog()` 加载，**无需**再编辑 `runtime/tools/data.py` 中的硬编码列表。
 
 ### 验证
 
@@ -20,10 +20,23 @@ pytest tests/test_tools.py::TestProductSearchTool -v
 
 ---
 
-## 2. 扩展法规与条款
+## 2. 文档数据（采集 + 导入）
 
-- 元数据：`knowledge_pack/regulations/catalog.json`
-- 全文检索：向 `runtime/tools/document_data.py` 的 `DOCUMENT_STORE` 添加分块文档
+文档检索数据**仅**来自 `ingest_documents.py` 的输出。完整流程见 [DATA.md](../knowledge_pack/DATA.md)。
+
+```bash
+# 可选：从保司官网 / 监管网站采集
+python scripts/fetch_documents.py --init
+python scripts/fetch_documents.py --all
+
+# 必须：导入（支持手动放置的 PDF/TXT）
+python scripts/ingest_documents.py --init
+python scripts/ingest_documents.py --all
+```
+
+- 产品条款文件：`knowledge_pack/policy_documents/`
+- 监管文件：`knowledge_pack/regulations/documents/`
+- 运行时加载：`load_ingested_bundle()` / `load_ingested_documents()` → `ingested_documents.json`
 
 ---
 
@@ -59,47 +72,28 @@ pytest tests/test_tools.py::TestProductSearchTool -v
 
 ---
 
-## 6. 数据灌入
+## 6. 数据资产
 
-### 结构化数据（Path A）
+### 结构化数据（产品 / 规则 / 评测）
 
 | 资产 | 位置 | 运行时 |
 |------|------|--------|
-| 产品目录 | `knowledge_pack/products/` | `runtime/tools/data.py` |
-| 法规元数据 | `knowledge_pack/regulations/` | 元数据索引 |
-| 规则 | `knowledge_pack/rules/` | `load_rules()` → RuleEngine |
-| FAQ | `knowledge_pack/faq_dataset/` | 主要用于评测样本 |
+| 产品目录 | `knowledge_pack/products/` | `load_product_catalog()` |
+| 法规元数据 | `knowledge_pack/regulations/catalog.json` | 元数据 |
+| 规则 | `knowledge_pack/rules/` | `load_rules()` |
+| FAQ | `knowledge_pack/faq_dataset/` | 评测样本 |
 
-### 文档灌入（Path B）
+### 文档数据（条款 / 监管正文）
 
 ```
-文档 → ingest_text_document / ingest_document
-     → ChunkStore + Embedding
-     → HybridRetriever (BM25 + Vector + Ontology)
+采集（可选）  fetch_documents.py  →  policy_documents/ / regulations/documents/
+导入（必须）  ingest_documents.py →  chunks/ingested_documents.json
+运行时        load_ingested_documents() → HybridRetriever
 ```
 
-首次 `MultiAgentEngine.query()` 时 `_ensure_knowledge()` 懒加载 `DOCUMENT_STORE` 并构建检索索引。
+首次 `MultiAgentEngine.query()` 时 `_ensure_knowledge()` 加载 `ingested_documents.json` 并构建检索索引。
 
-程序化灌入示例：
-
-```python
-from knowledge.ingestion.pipeline import ChunkStore, EmbeddingGenerator, ingest_document
-
-store = ChunkStore()
-gen = EmbeddingGenerator(vector_dim=256)
-meta, chunks = ingest_document(
-    file_path="path/to/clause.pdf",
-    document_id="DOC008",
-    title="产品条款",
-    document_type="policy_clause",
-    chunk_store=store,
-    embedding_gen=gen,
-)
-```
-
-### 双份维护注意
-
-`knowledge_pack/` 为资产清单；`runtime/tools/` 为运行时实际读取源，扩展时 often 需同步两处。
+详见 [DATA.md](../knowledge_pack/DATA.md)。
 
 ---
 

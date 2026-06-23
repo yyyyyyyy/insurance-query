@@ -150,13 +150,23 @@ class ToolAgent(BaseAgent):
             hints = msg.payload.get("retrieval_context", [])
             tool_results = {}
             memory_facts_written: Dict[str, Any] = {}
+            parallel_calls = []
             for step in plan:
                 tool_name = step.get("tool_name","")
                 params = dict(step.get("input_params",{}))
                 params["query"] = msg.payload.get("query","")
                 if hints:
                     params["_retrieval_hints"] = hints
-                result = self.async_exec.execute(tool_name, self.dispatcher.dispatch, params)
+                parallel_calls.append((tool_name, params))
+
+            async_results = self.async_exec.execute_parallel(
+                parallel_calls,
+                self.dispatcher.dispatch,
+            ) if parallel_calls else []
+
+            for async_result in async_results:
+                tool_name = async_result.tool_name
+                result = async_result
                 tool_results[tool_name] = result
                 if result.success and result.result:
                     facts = extract_facts_from_tool(tool_name, result.result.data)
@@ -200,16 +210,7 @@ class EvaluationAgent(BaseAgent):
             tc = TraceCapture()
             sid = ctx.session_id if ctx else msg.payload.get("session_id", "unknown")
             q = ctx.query if ctx else msg.payload.get("query", "")
-            state = msg.payload.get("state", {})
-            if not state.get("intent") and ctx:
-                state = {
-                    "intent": ctx.intent,
-                    "answer": ctx.answer,
-                    "ontology_context": ctx.ontology_context,
-                    "process_result": ctx.process_result,
-                    "rule_evaluation": ctx.rule_evaluation,
-                }
-            trace = tc.capture(sid, q, events, state)
+            trace = tc.capture(sid, q, events, {})
             ee = EvaluationEngine()
             hd = HallucinationDetector()
             fl = FeedbackLoop()
@@ -251,5 +252,5 @@ class SupervisorAgent(BaseAgent):
             self.execution_count += 1
             self.status = AgentStatus.COMPLETED
         return AgentMessage(str(uuid.uuid4()),"supervisor","orchestrator","result",
-            {"health":health,"recovery_actions":["retry_failed_agents","enable_fallbacks"] if health["issues"] else []},
+            {"health":health,"recovery_actions":[]},
             trace_id=msg.trace_id)

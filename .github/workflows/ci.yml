@@ -37,12 +37,12 @@ jobs:
 
       - name: Lint with ruff
         run: |
-          ruff check . --ignore=E501,E402,F841,F811 --exclude=.git,__pycache__,.pytest_cache,venv,.venv,knowledge_pack
+          ruff check . --ignore=E501,E402 --exclude=.git,__pycache__,.pytest_cache,venv,.venv,knowledge_pack
 
-      - name: Type check with mypy (non-blocking during rollout)
+      - name: Type check with mypy (expanded scope)
         continue-on-error: true
         run: |
-          mypy runtime evaluation
+          mypy runtime evaluation infra apps knowledge
 
       - name: Run tests
         run: |

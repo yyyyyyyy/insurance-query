@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from contextlib import asynccontextmanager
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Annotated
+import asyncio
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -22,6 +23,12 @@ from apps.api.console_helpers import build_console_payload
 import logging
 
 logger = logging.getLogger(__name__)
+
+SessionIdPath = Annotated[
+    str,
+    Path(max_length=64, pattern=r"^[a-zA-Z0-9_-]+$", description="Session identifier"),
+]
+
 
 def _create_app() -> FastAPI:
     """Application factory wiring engine and lifespan handlers."""
@@ -54,7 +61,7 @@ def _create_app() -> FastAPI:
     return FastAPI(
         title="InsureQuery AI Runtime Kernel",
         description="Production AI Runtime Infrastructure for Insurance Reasoning",
-        version="3.0.0-kernel-v2",
+        version="3.0.0",
         lifespan=_lifespan,
     )
 
@@ -89,8 +96,10 @@ app.add_middleware(
 
 from infra.middleware.rate_limit import RateLimitMiddleware
 from infra.middleware.request_id import RequestIdMiddleware, install_log_filter
+from infra.middleware.auth import ApiKeyMiddleware
 app.add_middleware(RateLimitMiddleware, rate=10, burst=30)
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(ApiKeyMiddleware)
 
 # Make every log record carry the current request_id (correlation ID).
 install_log_filter()
@@ -124,7 +133,9 @@ def _cache_console(session_id: str, payload: Dict[str, Any]) -> None:
 
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
-    session_id: Optional[str] = None
+    session_id: Optional[str] = Field(
+        None, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$",
+    )
 
 
 class HealthResponse(BaseModel):
@@ -164,7 +175,10 @@ def _rebuild_console_from_session(session_id: str) -> Dict[str, Any]:
 
 @app.post("/query", tags=["Runtime"])
 async def process_query(request: QueryRequest):
-    result = engine.query(query_text=request.query, session_id=request.session_id)
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        None, lambda: engine.query(request.query, request.session_id),
+    )
     wm = result.get("working_memory") or (
         _working_memory.get_context_for_query(result["session_id"]) if _working_memory else {}
     )
@@ -174,7 +188,7 @@ async def process_query(request: QueryRequest):
 
 
 @app.get("/trace/{session_id}", tags=["Runtime"])
-async def get_trace(session_id: str):
+async def get_trace(session_id: SessionIdPath):
     return _rebuild_console_from_session(session_id)
 
 
@@ -185,7 +199,7 @@ async def list_sessions():
 
 
 @app.get("/sessions/{session_id}", tags=["Runtime"])
-async def get_session(session_id: str):
+async def get_session(session_id: SessionIdPath):
     console = _rebuild_console_from_session(session_id)
     ctx = _working_memory.get_or_create(session_id) if _working_memory else None
     return {
@@ -251,7 +265,7 @@ async def health_check():
     llm = llm_settings()
     return HealthResponse(
         status="healthy",
-        version="3.0.0-kernel-v2",
+        version="3.0.0",
         sessions_processed=engine.event_store.session_count(),
         total_events=engine.event_store.count(),
         llm_enabled=llm.is_configured,

@@ -17,7 +17,7 @@
 |------|------|
 | [根目录 README](../README.md) | 项目入口与能力摘要 |
 | [Runtime Console](../apps/web/README.md) | 前端调试台 |
-| [Knowledge Pack 报告](../knowledge_pack/knowledge_pack_report.md) | 知识资产清单 |
+| [Knowledge Pack 数据流程](../knowledge_pack/DATA.md) | 采集与导入（唯一入口） |
 
 ## 文档原则
 

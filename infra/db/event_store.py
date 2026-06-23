@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(timestamp);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, sequence_number);
 """
 
 
@@ -64,6 +65,7 @@ class SqliteEventStore(EventStore):
         self._session_locks: Dict[str, threading.RLock] = {}
         self._session_locks_guard = threading.Lock()
         self._batch_depth = 0
+        self._batch_memory_snapshot: Optional[int] = None
         self._init_db()
         self._load_existing_events()
 
@@ -146,18 +148,23 @@ class SqliteEventStore(EventStore):
                     # Only commit if no explicit batch transaction is active
                     if not self._batch_depth:
                         self._conn.commit()
-                except sqlite3.IntegrityError:
-                    logger.warning("Duplicate event_id: %s, skipping", event.event_id)
+                except sqlite3.IntegrityError as exc:
+                    logger.error(
+                        "Event insert failed (event_id=%s, session=%s, seq=%s): %s",
+                        event.event_id, event.session_id, event.sequence_number, exc,
+                    )
+                    raise
 
-            # Then store in memory
             return super().append(event)
 
     def begin_batch(self) -> None:
         """Start a batch transaction to group many appends into one commit."""
         with self._write_lock:
             self._batch_depth += 1
-            if self._conn and self._batch_depth == 1:
-                self._conn.execute("BEGIN")
+            if self._batch_depth == 1:
+                self._batch_memory_snapshot = len(self._events)
+                if self._conn:
+                    self._conn.execute("BEGIN")
 
     def commit_batch(self) -> None:
         """Commit a pending batch transaction."""
@@ -165,20 +172,26 @@ class SqliteEventStore(EventStore):
             if self._batch_depth <= 0:
                 return
             self._batch_depth -= 1
-            if self._conn and self._batch_depth == 0:
-                self._conn.commit()
+            if self._batch_depth == 0:
+                self._batch_memory_snapshot = None
+                if self._conn:
+                    self._conn.commit()
 
     def rollback_batch(self) -> None:
-        """Roll back a pending batch transaction."""
+        """Roll back a pending batch transaction and in-memory events."""
         with self._write_lock:
             if self._batch_depth <= 0:
                 return
+            snapshot = self._batch_memory_snapshot
             self._batch_depth = 0
+            self._batch_memory_snapshot = None
             if self._conn:
                 try:
                     self._conn.rollback()
                 except sqlite3.Error:
                     pass
+            if snapshot is not None:
+                self._truncate_to(snapshot)
 
     def clear(self) -> None:
         """Clear all events from both SQLite and memory."""

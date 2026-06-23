@@ -72,21 +72,21 @@ def _catalog_to_runtime(product_entry: Dict[str, Any]) -> Dict[str, Any]:
             p["guaranteed_renewal_years"] = int(m.group(1))
 
     # Deductible
-    deductible_str = str(product_entry.get("deductible", "10000"))
-    deductible_num = _parse_deductible(deductible_str)
-    if deductible_num is not None:
-        p["deductible"] = deductible_num
+    if "deductible" in product_entry:
+        deductible_num = _parse_deductible(str(product_entry["deductible"]))
+        if deductible_num is not None:
+            p["deductible"] = deductible_num
 
     # Waiting period
-    wp_str = str(product_entry.get("waiting_period", "30"))
-    import re
-    m = re.search(r"(\d+)", wp_str)
-    if m:
-        p["waiting_period_days"] = int(m.group(1))
+    if "waiting_period" in product_entry:
+        import re
+        m = re.search(r"(\d+)", str(product_entry["waiting_period"]))
+        if m:
+            p["waiting_period_days"] = int(m.group(1))
 
     # Coverage limits
-    coverage = product_entry.get("coverage", {})
-    if isinstance(coverage, dict):
+    coverage = product_entry.get("coverage")
+    if isinstance(coverage, dict) and coverage:
         for key in coverage:
             val = str(coverage[key])
             nums = _extract_number(val)
@@ -120,6 +120,16 @@ def _catalog_to_runtime(product_entry: Dict[str, Any]) -> Dict[str, Any]:
 
     # Diseases (derive from category and coverage)
     p["covered_diseases"] = _resolve_diseases_for_category(category)
+
+    if "deductible" not in product_entry:
+        p["deductible"] = "unknown"
+    if "coverage" not in product_entry:
+        p["coverage_limit"] = "unknown"
+        p["critical_illness_limit"] = "unknown"
+    if "premium_reference" not in product_entry:
+        p["premium_reference"] = {}
+        p["premium_min"] = "unknown"
+        p["premium_max"] = "unknown"
 
     return p
 
@@ -210,52 +220,43 @@ def load_product_catalog() -> List[Dict[str, Any]]:
         logger.info("Loaded %d products from catalog.json", len(result))
         return result
     except (FileNotFoundError, json.JSONDecodeError) as exc:
-        logger.warning("Failed to load product catalog: %s. Falling back to hardcoded data.", exc)
-        from runtime.tools.data import _LEGACY_PRODUCT_CATALOG
-        return _LEGACY_PRODUCT_CATALOG
+        logger.warning("Failed to load product catalog: %s. Returning empty catalog.", exc)
+        return []
 
 
 # ============================================================
 # FAQ Loading
 # ============================================================
 
-def load_faqs_as_documents() -> List[Dict[str, Any]]:
-    """Load FAQs from knowledge_pack/faq_dataset/faqs.json as document chunks.
-
-    Returns a list in DOCUMENT_STORE format (document_id, title, document_type, chunks).
-    """
-    path = _KNOWLEDGE_PACK_ROOT / "faq_dataset" / "faqs.json"
+def _load_document_bundle(path: Path, key: str = "documents") -> List[Dict[str, Any]]:
+    """Load a JSON bundle that contains a list of documents under *key*."""
     try:
         data = _read_json(path)
     except (FileNotFoundError, json.JSONDecodeError) as exc:
-        logger.warning("Failed to load FAQs: %s", exc)
+        logger.warning("Failed to load documents from %s: %s", path.name, exc)
         return []
-
-    faqs = data.get("faqs", [])
-    chunks: List[Dict[str, Any]] = []
-    for i, faq in enumerate(faqs):
-        qid = faq.get("question_id", f"FAQ{i:04d}")
-        question = faq.get("question", "")
-        if not question:
-            continue
-        chunks.append({
-            "chunk_id": f"FAQ_{qid}",
-            "clause": faq.get("task_type", "general"),
-            "content": question,
-            "page": None,
-        })
-        if len(chunks) >= 500:
-            break  # Limit to 500 most common FAQs to avoid memory bloat
-
-    if not chunks:
+    docs = data.get(key, [])
+    if not isinstance(docs, list):
         return []
+    return [d for d in docs if isinstance(d, dict) and d.get("chunks")]
 
-    return [{
-        "document_id": "DOC_FAQ",
-        "title": "保险常见问题FAQ数据集",
-        "document_type": "faq",
-        "chunks": chunks,
-    }]
+
+def load_ingested_documents() -> List[Dict[str, Any]]:
+    """Load imported documents from knowledge_pack/chunks/ingested_documents.json."""
+    path = _KNOWLEDGE_PACK_ROOT / "chunks" / "ingested_documents.json"
+    docs = _load_document_bundle(path)
+    if docs:
+        total_chunks = sum(len(d.get("chunks", [])) for d in docs)
+        logger.info(
+            "Loaded %d ingested documents (%d chunks) from %s",
+            len(docs), total_chunks, path.name,
+        )
+    return docs
+
+
+def load_ingested_policy_documents() -> List[Dict[str, Any]]:
+    """Backward-compatible alias."""
+    return load_ingested_documents()
 
 
 # ============================================================

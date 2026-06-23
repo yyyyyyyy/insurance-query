@@ -54,8 +54,10 @@ class TestCanonicalEvidenceLifecycle:
 
 class TestClosedLoopRuntime:
     @pytest.fixture
-    def engine(self):
-        return MultiAgentEngine()
+    def engine(self, tmp_path):
+        tuner = SelfTuner(config_path=str(tmp_path / "tuning.json"))
+        tuner.config.evidence_threshold = 0.0
+        return MultiAgentEngine(tuner=tuner)
 
     def test_evidence_selected_before_answer(self, engine):
         result = engine.query("重疾险保障范围")
@@ -183,11 +185,12 @@ class TestClosedLoopRuntime:
     def test_cache_hit_integrates_event_store(self):
         engine = MultiAgentEngine()
         q = "cache-i1-integration-test"
-        r1 = engine.query(q)
+        sid = "cache-i1-session"
+        r1 = engine.query(q, session_id=sid)
         assert r1.get("cached") is not True
         assert "CACHE_MISS" in {e["event_type"] for e in r1["event_trace"]}
 
-        r2 = engine.query(q)
+        r2 = engine.query(q, session_id=sid)
         assert r2.get("cached") is True
         types = [e["event_type"] for e in r2["event_trace"]]
         assert "CACHE_HIT" in types

@@ -72,8 +72,9 @@ class TestEngine:
         assert len(r["execution_graph"])>=2
     def test_cache(self):
         e=MultiAgentEngine()
-        e.query("cachetest")
-        r2=e.query("cachetest")
+        sid = "cache-test-session"
+        e.query("cachetest", session_id=sid)
+        r2=e.query("cachetest", session_id=sid)
         assert r2.get("cached") is True
     def test_agent_statuses(self):
         e=MultiAgentEngine()

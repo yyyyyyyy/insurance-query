@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -75,27 +76,30 @@ class SelfTuner:
 
     def __init__(self, config_path: str = "data/tuning.json"):
         self.config_path = config_path
+        self._lock = threading.RLock()
         self.config = self._load_config()
 
     def _load_config(self) -> TuningConfig:
-        try:
-            path = Path(self.config_path)
-            if path.exists():
-                data = json.loads(path.read_text())
-                return TuningConfig(**{k: v for k, v in data.items()
-                                       if k in TuningConfig.__dataclass_fields__})
-        except Exception:
-            pass
-        return TuningConfig()
+        with self._lock:
+            try:
+                path = Path(self.config_path)
+                if path.exists():
+                    data = json.loads(path.read_text())
+                    return TuningConfig(**{k: v for k, v in data.items()
+                                           if k in TuningConfig.__dataclass_fields__})
+            except Exception:
+                pass
+            return TuningConfig()
 
     def _save_config(self):
-        try:
-            Path(self.config_path).parent.mkdir(parents=True, exist_ok=True)
-            Path(self.config_path).write_text(
-                json.dumps(self.config.to_dict(), indent=2, ensure_ascii=False)
-            )
-        except Exception as exc:
-            logger.warning("Failed to save tuning config: %s", exc)
+        with self._lock:
+            try:
+                Path(self.config_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(self.config_path).write_text(
+                    json.dumps(self.config.to_dict(), indent=2, ensure_ascii=False)
+                )
+            except Exception as exc:
+                logger.warning("Failed to save tuning config: %s", exc)
 
     def apply_evaluation(
         self,
@@ -109,102 +113,108 @@ class SelfTuner:
         are skipped until at least ``MIN_SAMPLES_FOR_ADJUST`` samples
         have been observed.
         """
-        self.config.total_queries += 1
+        with self._lock:
+            self.config.total_queries += 1
 
-        dims = evaluation.get("dimensions", {})
-        total_score = evaluation.get("total_score", 50)
+            dims = evaluation.get("dimensions", {})
+            total_score = evaluation.get("total_score", 50)
 
-        # Update EMA-smoothed scores. First observation seeds the EMA.
-        retrieval_score_raw = dims.get("retrieval", 50) / 100.0
-        answer_score_raw = dims.get("answer", 50) / 100.0
-        if self.config.retrieval_score_ema < 0:
-            self.config.retrieval_score_ema = retrieval_score_raw
-        else:
-            self.config.retrieval_score_ema = (
-                SCORE_EMA_ALPHA * retrieval_score_raw
-                + (1 - SCORE_EMA_ALPHA) * self.config.retrieval_score_ema
-            )
-        if self.config.answer_score_ema < 0:
-            self.config.answer_score_ema = answer_score_raw
-        else:
-            self.config.answer_score_ema = (
-                SCORE_EMA_ALPHA * answer_score_raw
-                + (1 - SCORE_EMA_ALPHA) * self.config.answer_score_ema
-            )
+            if feedback_signals:
+                for signal in feedback_signals:
+                    stype = signal.get("type", signal.get("signal_type", ""))
+                    if stype == "retrieval_quality":
+                        self.config.top_k = min(self.config.top_k + 1, 20)
+                    elif stype == "evidence_quality":
+                        self.config.evidence_threshold = min(
+                            self.config.evidence_threshold + 0.02, 0.3,
+                        )
+                    elif stype == "ontology_coverage":
+                        self.config.ontology_depth = min(self.config.ontology_depth + 1, 4)
 
-        reason = "weights stable (warmup)"
-
-        # Only adjust once we have enough samples to trust the smoothed mean.
-        if self.config.total_queries >= MIN_SAMPLES_FOR_ADJUST:
-            retrieval_score = self.config.retrieval_score_ema
-            answer_score = self.config.answer_score_ema
-
-            if retrieval_score < 0.5:
-                # Retrieval poor: boost BM25 (keyword) more
-                self.config.bm25_weight = min(
-                    self.config.bm25_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
-                )
-                self.config.vector_weight = max(
-                    self.config.vector_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
-                )
-                reason = f"boosted BM25 (retrieval_ema={retrieval_score:.2f})"
-            elif answer_score < 0.5:
-                # Answer quality poor: might need better semantic understanding
-                self.config.vector_weight = min(
-                    self.config.vector_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
-                )
-                self.config.bm25_weight = max(
-                    self.config.bm25_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
-                )
-                reason = f"boosted vector (answer_ema={answer_score:.2f})"
-            elif retrieval_score > 0.8 and answer_score > 0.8:
-                # Both great: slightly increase ontology for better context
-                self.config.ontology_weight = min(
-                    self.config.ontology_weight + WEIGHT_ADJUST_STEP * 0.3, 0.3
-                )
-                reason = "boosted ontology (scores high)"
+            # Update EMA-smoothed scores. First observation seeds the EMA.
+            retrieval_score_raw = dims.get("retrieval", 50) / 100.0
+            answer_score_raw = dims.get("answer", 50) / 100.0
+            if self.config.retrieval_score_ema < 0:
+                self.config.retrieval_score_ema = retrieval_score_raw
             else:
-                reason = "weights stable"
+                self.config.retrieval_score_ema = (
+                    SCORE_EMA_ALPHA * retrieval_score_raw
+                    + (1 - SCORE_EMA_ALPHA) * self.config.retrieval_score_ema
+                )
+            if self.config.answer_score_ema < 0:
+                self.config.answer_score_ema = answer_score_raw
+            else:
+                self.config.answer_score_ema = (
+                    SCORE_EMA_ALPHA * answer_score_raw
+                    + (1 - SCORE_EMA_ALPHA) * self.config.answer_score_ema
+                )
 
-            # Normalize weights to sum to 1.0
-            total_w = (
-                self.config.bm25_weight
-                + self.config.vector_weight
-                + self.config.ontology_weight
-            )
-            if total_w > 0:
-                self.config.bm25_weight /= total_w
-                self.config.vector_weight /= total_w
-                self.config.ontology_weight /= total_w
+            reason = "weights stable (warmup)"
 
-        # Adjust ontology expansion depth (only after warmup)
-        if self.config.total_queries >= MIN_SAMPLES_FOR_ADJUST:
-            onto_score = dims.get("reasoning", 50) / 100.0
-            if onto_score < 0.4:
-                self.config.ontology_depth = min(self.config.ontology_depth + 1, 4)
+            if self.config.total_queries >= MIN_SAMPLES_FOR_ADJUST:
+                retrieval_score = self.config.retrieval_score_ema
+                answer_score = self.config.answer_score_ema
 
-        # Adjust evidence threshold (reactive — hallucination is high-signal)
-        hallucination_score = evaluation.get("hallucination_score", 0)
-        if hallucination_score > 0.3:
-            self.config.evidence_threshold = min(
-                self.config.evidence_threshold + 0.05, 0.3
-            )
-            reason += " | raised evidence threshold"
+                if retrieval_score < 0.5:
+                    self.config.bm25_weight = min(
+                        self.config.bm25_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
+                    )
+                    self.config.vector_weight = max(
+                        self.config.vector_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
+                    )
+                    reason = f"boosted BM25 (retrieval_ema={retrieval_score:.2f})"
+                elif answer_score < 0.5:
+                    self.config.vector_weight = min(
+                        self.config.vector_weight + WEIGHT_ADJUST_STEP, WEIGHT_MAX
+                    )
+                    self.config.bm25_weight = max(
+                        self.config.bm25_weight - WEIGHT_ADJUST_STEP * 0.5, WEIGHT_MIN
+                    )
+                    reason = f"boosted vector (answer_ema={answer_score:.2f})"
+                elif retrieval_score > 0.8 and answer_score > 0.8:
+                    self.config.ontology_weight = min(
+                        self.config.ontology_weight + WEIGHT_ADJUST_STEP * 0.3, 0.3
+                    )
+                    reason = "boosted ontology (scores high)"
+                else:
+                    reason = "weights stable"
 
-        self.config.last_adjustment = reason
-        self._save_config()
+                total_w = (
+                    self.config.bm25_weight
+                    + self.config.vector_weight
+                    + self.config.ontology_weight
+                )
+                if total_w > 0:
+                    self.config.bm25_weight /= total_w
+                    self.config.vector_weight /= total_w
+                    self.config.ontology_weight /= total_w
 
-        if self.config.total_queries % 10 == 0:
-            logger.info(
-                "SelfTuner adjusted (query #%d): %s | weights: bm25=%.2f vector=%.2f onto=%.2f",
-                self.config.total_queries,
-                reason,
-                self.config.bm25_weight,
-                self.config.vector_weight,
-                self.config.ontology_weight,
-            )
+            if self.config.total_queries >= MIN_SAMPLES_FOR_ADJUST:
+                onto_score = dims.get("reasoning", 50) / 100.0
+                if onto_score < 0.4:
+                    self.config.ontology_depth = min(self.config.ontology_depth + 1, 4)
 
-        return self.config
+            hallucination_score = evaluation.get("hallucination_score", 0)
+            if hallucination_score > 0.3:
+                self.config.evidence_threshold = min(
+                    self.config.evidence_threshold + 0.05, 0.3
+                )
+                reason += " | raised evidence threshold"
+
+            self.config.last_adjustment = reason
+            self._save_config()
+
+            if self.config.total_queries % 10 == 0:
+                logger.info(
+                    "SelfTuner adjusted (query #%d): %s | weights: bm25=%.2f vector=%.2f onto=%.2f",
+                    self.config.total_queries,
+                    reason,
+                    self.config.bm25_weight,
+                    self.config.vector_weight,
+                    self.config.ontology_weight,
+                )
+
+            return self.config
 
     def get_retrieval_params(self) -> Dict[str, Any]:
         """Get current optimal retrieval parameters."""

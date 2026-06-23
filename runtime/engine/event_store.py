@@ -501,6 +501,17 @@ class EventStore:
         self._events.clear()
         self._session_index.clear()
 
+    def _truncate_to(self, count: int) -> None:
+        """Truncate in-memory log to *count* events and rebuild session index."""
+        if count < 0 or count > len(self._events):
+            return
+        self._events = self._events[:count]
+        self._session_index.clear()
+        for idx, event in enumerate(self._events):
+            if event.session_id not in self._session_index:
+                self._session_index[event.session_id] = []
+            self._session_index[event.session_id].append(idx)
+
     def replay(self, session_id: str) -> List[Event]:
         """Replay all events for a session (used by reducer to rebuild state)."""
         return self.get_session_events(session_id)

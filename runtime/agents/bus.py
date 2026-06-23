@@ -66,6 +66,8 @@ class AgentContext:
         "degraded_mode":self.degraded_mode}
 
 class AgentBus:
+    MAX_LOG = 1000
+
     def __init__(self):
         self._agents: Dict[str, BaseAgent] = {}
         self._log: List[AgentMessage] = []
@@ -73,6 +75,8 @@ class AgentBus:
         self._agents[a.name] = a
     def send(self, msg: AgentMessage, ctx: Optional["AgentContext"] = None) -> AgentMessage:
         self._log.append(msg)
+        if len(self._log) > self.MAX_LOG:
+            self._log = self._log[-self.MAX_LOG:]
         a = self._agents.get(msg.recipient)
         if not a:
             return AgentMessage(str(uuid.uuid4()),msg.recipient,msg.sender,"error",{"error":f"Agent not found: {msg.recipient}"})

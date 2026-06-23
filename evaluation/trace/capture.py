@@ -154,17 +154,43 @@ class TraceCapture:
                     "from_cache": True,
                     "source_trace_id": payload.get("source_trace_id", ""),
                 })
+            elif et == "ONTOLOGY_EXPANDED":
+                expanded = (
+                    payload.get("expanded_entities")
+                    or payload.get("seed_entities")
+                    or []
+                )
+                trace.ontology_expansion = {
+                    "context": expanded,
+                    "path": payload.get("path", []),
+                    "seed_entities": payload.get("seed_entities", []),
+                }
+                trace.ontology_entities_used = len(expanded)
             elif et == "ANSWER_GENERATED":
                 trace.final_answer = {
                     "text": payload.get("answer", ""),
                     "citations": payload.get("citations", []),
                     "confidence": payload.get("confidence"),
+                    "accepted_evidence_ids": payload.get("accepted_evidence_ids", []),
+                    "used_in_answer_ids": payload.get("used_in_answer_ids", []),
                 }
+                if payload.get("used_in_answer_ids"):
+                    trace.accepted_evidence_count = len(payload["used_in_answer_ids"])
 
-        if not trace.final_answer and state.get("answer"):
-            trace.final_answer = state.get("answer") or {}
-        if not trace.intent and state.get("intent"):
-            trace.intent = state.get("intent") or {}
+        if not trace.final_answer.get("text"):
+            degraded_answer = state.get("answer") or {}
+            if degraded_answer:
+                trace.final_answer = degraded_answer
+        if not trace.intent:
+            degraded_intent = state.get("intent") or {}
+            if degraded_intent:
+                trace.intent = degraded_intent
+        if not trace.ontology_expansion.get("context") and state.get("ontology_context"):
+            trace.ontology_expansion = {
+                "context": state.get("ontology_context", []),
+                "path": state.get("retrieval_path", []),
+            }
+            trace.ontology_entities_used = len(state.get("ontology_context", []))
 
         trace.evidence_count = max(
             len(trace.evidence_items),

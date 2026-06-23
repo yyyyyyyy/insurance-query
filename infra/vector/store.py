@@ -29,7 +29,10 @@ class ChromaVectorStore:
     """
 
     def __init__(self, persist_dir: Optional[str] = None, collection_name: str = "insurance_chunks"):
-        self.persist_dir = persist_dir or str(Path(__file__).resolve().parents[2] / "data" / "vectordb")
+        import os
+        default_dir = Path(__file__).resolve().parents[2] / "data" / "vectordb"
+        env_dir = os.environ.get("CHROMA_PERSIST_DIR", "").strip()
+        self.persist_dir = persist_dir or env_dir or str(default_dir)
         self.collection_name = collection_name
         self._client = None
         self._collection = None
@@ -104,18 +107,46 @@ class ChromaVectorStore:
             metadatas.append(meta)
 
         try:
-            self._collection.add(
+            self._collection.upsert(
                 ids=ids,
                 documents=documents,
                 embeddings=embeddings,
                 metadatas=metadatas,
             )
-            self._chunk_count += len(chunks)
-            logger.debug("Added %d chunks to ChromaDB", len(chunks))
+            self._chunk_count = self._collection.count()
+            logger.debug("Upserted %d chunks to ChromaDB", len(chunks))
             return len(chunks)
         except Exception as exc:
+            if "dimension" in str(exc).lower():
+                logger.warning("ChromaDB dimension mismatch, resetting collection: %s", exc)
+                self._reset_collection()
+                try:
+                    self._collection.upsert(
+                        ids=ids,
+                        documents=documents,
+                        embeddings=embeddings,
+                        metadatas=metadatas,
+                    )
+                    self._chunk_count = self._collection.count()
+                    return len(chunks)
+                except Exception as retry_exc:
+                    logger.warning("ChromaDB upsert failed after reset: %s", retry_exc)
+                    return 0
             logger.warning("Failed to add chunks to ChromaDB: %s", exc)
             return 0
+
+    def _reset_collection(self) -> None:
+        if not self._client:
+            return
+        try:
+            self._client.delete_collection(self.collection_name)
+        except Exception:
+            pass
+        self._collection = self._client.create_collection(
+            name=self.collection_name,
+            metadata={"description": "Insurance document chunks with vector embeddings"},
+        )
+        self._chunk_count = 0
 
     def search(
         self,
@@ -146,7 +177,10 @@ class ChromaVectorStore:
                     items.append((cid, score, meta))
             return items
         except Exception as exc:
-            logger.warning("ChromaDB search failed: %s", exc)
+            if "dimension" in str(exc).lower():
+                logger.warning("ChromaDB search dimension mismatch: %s", exc)
+            else:
+                logger.warning("ChromaDB search failed: %s", exc)
             return []
 
     def get_by_document(self, document_id: str) -> List[Dict[str, Any]]:

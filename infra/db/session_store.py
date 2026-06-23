@@ -17,9 +17,12 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -104,63 +107,59 @@ class WorkingMemory:
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
-        # In-memory cache
-        self._cache: Dict[str, SessionContext] = {}
+        # In-memory LRU cache
+        self._cache: "OrderedDict[str, SessionContext]" = OrderedDict()
+        self._lock = threading.RLock()
         self._expire_old_sessions()
 
     def get_or_create(self, session_id: str) -> SessionContext:
         """Get existing session context or create a new one."""
-        if session_id in self._cache:
-            return self._cache[session_id]
+        with self._lock:
+            if session_id in self._cache:
+                self._cache.move_to_end(session_id)
+                return self._cache[session_id]
 
-        # Try to load from DB
-        cursor = self._conn.execute(
-            "SELECT query_count, context FROM sessions WHERE session_id = ?",
-            (session_id,),
-        )
-        row = cursor.fetchone()
-        if row:
-            query_count, context_json = row
-            data = json.loads(context_json)
-            ctx = SessionContext.from_dict(data)
-            ctx.query_count = query_count
+            cursor = self._conn.execute(
+                "SELECT query_count, context FROM sessions WHERE session_id = ?",
+                (session_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                query_count, context_json = row
+                data = json.loads(context_json)
+                ctx = SessionContext.from_dict(data)
+                ctx.query_count = query_count
+                self._cache[session_id] = ctx
+                self._cache.move_to_end(session_id)
+                return ctx
+
+            ctx = SessionContext(session_id=session_id)
             self._cache[session_id] = ctx
+            self._cache.move_to_end(session_id)
             return ctx
 
-        # Create new
-        ctx = SessionContext(session_id=session_id)
-        self._cache[session_id] = ctx
-        return ctx
-
     def save(self, session_id: str, ctx: Optional[SessionContext] = None, *, increment_turn: bool = False):
-        """Persist session context to DB.
+        """Persist session context to DB."""
+        with self._lock:
+            ctx = ctx or self._cache.get(session_id)
+            if not ctx:
+                return
 
-        Args:
-            increment_turn: When True, increment query_count. Only the
-                query-completion path (update_from_query) should set this;
-                internal mutations (add_facts, set_active_process) must not,
-                otherwise turn_count balloons per single query.
-        """
-        ctx = ctx or self._cache.get(session_id)
-        if not ctx:
-            return
+            if increment_turn:
+                ctx.query_count += 1
+            now = datetime.now(timezone.utc).isoformat()
 
-        if increment_turn:
-            ctx.query_count += 1
-        now = datetime.now(timezone.utc).isoformat()
+            self._conn.execute(
+                "INSERT OR REPLACE INTO sessions (session_id, query_count, created_at, updated_at, context) "
+                "VALUES (?, ?, COALESCE((SELECT created_at FROM sessions WHERE session_id=?), ?), ?, ?)",
+                (session_id, ctx.query_count, session_id, now, now, ctx.to_json()),
+            )
+            self._conn.commit()
 
-        self._conn.execute(
-            "INSERT OR REPLACE INTO sessions (session_id, query_count, created_at, updated_at, context) "
-            "VALUES (?, ?, COALESCE((SELECT created_at FROM sessions WHERE session_id=?), ?), ?, ?)",
-            (session_id, ctx.query_count, session_id, now, now, ctx.to_json()),
-        )
-        self._conn.commit()
+            self._cache.move_to_end(session_id)
 
-        # Evict if cache grows too large
-        if len(self._cache) > MAX_ACTIVE_SESSIONS:
-            oldest = sorted(self._cache.keys())[:len(self._cache) // 4]
-            for key in oldest:
-                self._cache.pop(key, None)
+            if len(self._cache) > MAX_ACTIVE_SESSIONS:
+                self._cache.popitem(last=False)
 
     def update_from_query(
         self,

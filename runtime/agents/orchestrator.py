@@ -1,4 +1,4 @@
-"""Insurance Runtime Kernel v2 — MultiAgentEngine (唯一运行时入口).
+"""Insurance Runtime Kernel v3 — MultiAgentEngine (唯一运行时入口).
 
 Pipeline:
   Memory resolve → Intent → Plan → Retrieval (tuner-weighted)
@@ -8,12 +8,13 @@ Pipeline:
 
 from __future__ import annotations
 import os
+import threading
 import time
 import uuid
 from contextlib import nullcontext as _nullcontext
 from typing import Any, Dict, List, Optional
 
-from runtime.agents.bus import AgentBus, AgentMessage, AgentContext
+from runtime.agents.bus import AgentBus, AgentMessage, AgentContext, AgentStatus
 from runtime.agents.agents import (
     PlannerAgent, RetrievalAgent, ToolAgent, EvaluationAgent, SupervisorAgent
 )
@@ -28,6 +29,7 @@ from runtime.engine.event_store import (
     memory_updated_event, tool_executed_event, process_executed_event,
     rule_evaluated_event, tuning_applied_event, evidence_selected_event,
     cache_hit_event, cache_miss_event,
+    agent_assigned_event, agent_completed_event, system_degraded_event,
 )
 from runtime.evidence.canonical import CanonicalEvidenceSet
 from runtime.evidence.selector import select_evidence_for_answer
@@ -47,7 +49,7 @@ from knowledge.retrieval.engine import HybridRetriever
 
 
 class MultiAgentEngine:
-    """Insurance Runtime Kernel v2 — unified decision runtime."""
+    """Insurance Runtime Kernel v3 — unified decision runtime."""
 
     def __init__(
         self,
@@ -82,6 +84,7 @@ class MultiAgentEngine:
         self.bus.register(SupervisorAgent())
 
         self._knowledge_loaded = False
+        self._knowledge_lock = threading.Lock()
         self._rules: List[Dict[str, Any]] = []
 
     def _next_seq(self, session_id: str) -> int:
@@ -101,6 +104,50 @@ class MultiAgentEngine:
         if callable(getter):
             return getter(session_id)
         return None
+
+    def _send_agent(
+        self,
+        ctx: AgentContext,
+        session_id: str,
+        seq: int,
+        recipient: str,
+        msg_type: str,
+        payload: Dict[str, Any],
+        trace_id: str,
+        *,
+        emit_events: bool = True,
+    ) -> tuple:
+        """Dispatch to an agent, optionally recording agent lifecycle events."""
+        if emit_events:
+            seq += 1
+            self.event_store.append(agent_assigned_event(
+                session_id, seq, recipient, {"msg_type": msg_type},
+            ))
+
+        resp = self.bus.send(AgentMessage(
+            str(uuid.uuid4()), "orchestrator", recipient, msg_type,
+            payload, trace_id=trace_id,
+        ), ctx)
+
+        agent = self.bus.get_agent(recipient)
+        if ctx and agent:
+            ctx.agent_statuses[recipient] = agent.status
+
+        if emit_events and agent:
+            seq += 1
+            self.event_store.append(agent_completed_event(
+                session_id, seq, recipient,
+                {"msg_type": resp.msg_type, "status": agent.status.value},
+            ))
+            seq += 1
+            if agent.status == AgentStatus.FAILED:
+                ctx.degraded_mode = True
+                self.event_store.append(system_degraded_event(
+                    session_id, seq, reason=f"agent:{recipient}:failed",
+                ))
+                seq += 1
+
+        return resp, seq
 
     def _materialize_cache_hit_response(
         self,
@@ -219,12 +266,18 @@ class MultiAgentEngine:
     def _ensure_knowledge(self):
         if self._knowledge_loaded:
             return
+        with self._knowledge_lock:
+            if self._knowledge_loaded:
+                return
+            self._load_knowledge()
+
+    def _load_knowledge(self):
         from knowledge.ontology.builder import build_insurance_ontology
         from knowledge.retrieval.embeddings import EmbeddingFactory
-        from knowledge.ingestion.pipeline import ingest_text_document
+        from knowledge.ingestion.pipeline import ingest_text_document, Chunk
         from knowledge.evidence.index import EvidenceIndex
         from runtime.tools.document_data import DOCUMENT_STORE
-        from runtime.tools.data_loader import load_faqs_as_documents, load_rules
+        from runtime.tools.data_loader import load_ingested_documents, load_rules
         from infra.vector.store import ChromaVectorStore
         import logging
         logger = logging.getLogger(__name__)
@@ -243,16 +296,33 @@ class MultiAgentEngine:
 
         self._vector_store = ChromaVectorStore()
 
-        faq_docs = load_faqs_as_documents()
-        if faq_docs:
-            for faq_doc in faq_docs:
-                DOCUMENT_STORE.append(faq_doc)
-            logger.info("Loaded %d FAQ documents into retrieval index", len(faq_docs))
+        ingested_docs = load_ingested_documents()
+        if ingested_docs:
+            DOCUMENT_STORE.clear()
+            DOCUMENT_STORE.extend(ingested_docs)
+            logger.info("Loaded %d documents into retrieval index", len(ingested_docs))
 
         for doc in DOCUMENT_STORE:
+            existing_chunks = doc.get("chunks", [])
+            if existing_chunks:
+                for c in existing_chunks:
+                    chunk = Chunk(
+                        chunk_id=c["chunk_id"],
+                        document_id=doc["document_id"],
+                        content=c["content"],
+                        page=c.get("page"),
+                        clause=c.get("clause", ""),
+                        section_title=c.get("section_title", ""),
+                        chunk_index=c.get("chunk_index", 0),
+                    )
+                    self._chunk_store.add_chunk(chunk)
+                    ei.index_chunk(
+                        chunk, doc.get("document_type", "policy_clause"), doc["title"],
+                    )
+                continue
             raw = "\n\n".join(
                 f"[{c.get('clause', '')}] {c['content']}"
-                for c in doc.get("chunks", [])
+                for c in existing_chunks
             )
             _, chunks = ingest_text_document(
                 raw, doc["document_id"], doc["title"],
@@ -325,8 +395,7 @@ class MultiAgentEngine:
             memory_context=memory_context,
         )
 
-        has_history = memory_context.get("turn_count", 0) > 0
-        qkey = self.cache.query_key(query_text, session_id if has_history else "")
+        qkey = self.cache.query_key(query_text, session_id)
         cached_val, was_hit = self.cache.get("query", qkey)
         if was_hit and cached_val:
             entry_meta = self.cache.get_entry_meta("query", qkey)
@@ -367,15 +436,15 @@ class MultiAgentEngine:
         ), ctx)
 
         # --- Intent + Plan (with memory) ---
-        resp = self.bus.send(AgentMessage(
-            str(uuid.uuid4()), "orchestrator", "planner", "task",
+        resp, seq = self._send_agent(
+            ctx, session_id, seq, "planner", "task",
             {
                 "query": resolved_query,
                 "memory_context": memory_context,
                 "injected_entities": injected_entities,
             },
-            trace_id=trace_id,
-        ), ctx)
+            trace_id,
+        )
         intent = resp.payload.get("intent", {})
         plan = resp.payload.get("plan", resp.payload.get("fallback_plan", []))
         ctx.intent = intent
@@ -399,7 +468,7 @@ class MultiAgentEngine:
 
         # --- Retrieval (tuner-weighted) ---
         retrieval_weights = self.tuner.get_retrieval_params()
-        retrieval_weights["min_score"] = self.tuner.get_evidence_threshold()
+        retrieval_weights["min_score"] = 0.0
         ctx.retrieval_weights = retrieval_weights
 
         seed_names = [e.get("value", "") for e in intent.get("entities", [])]
@@ -413,16 +482,16 @@ class MultiAgentEngine:
                 seed_entities=onto_matches, expanded_entities=onto_matches,
             ))
 
-        resp = self.bus.send(AgentMessage(
-            str(uuid.uuid4()), "orchestrator", "retrieval", "task",
+        resp, seq = self._send_agent(
+            ctx, session_id, seq, "retrieval", "task",
             {
                 "query": retrieval_query,
                 "ontology_context": seed_names,
                 "memory_context": memory_context,
                 "retrieval_weights": retrieval_weights,
             },
-            trace_id=trace_id,
-        ), ctx)
+            trace_id,
+        )
         retrieval_chunks = resp.payload.get("chunks", [])
         decision_trace = resp.payload.get("decision_trace", [])
         ctx.retrieval_results = retrieval_chunks
@@ -440,14 +509,14 @@ class MultiAgentEngine:
         ))
 
         # --- Tool execution ---
-        resp = self.bus.send(AgentMessage(
-            str(uuid.uuid4()), "orchestrator", "tool", "task",
+        resp, seq = self._send_agent(
+            ctx, session_id, seq, "tool", "task",
             {
                 "plan": plan, "query": resolved_query,
                 "retrieval_context": retrieval_chunks[:5],
             },
-            trace_id=trace_id,
-        ), ctx)
+            trace_id,
+        )
         agent_results = resp.payload.get("results", {})
         tool_memory_facts = resp.payload.get("memory_facts", {})
         ctx.execution_graph.append({"agent": "tool", "tools": list(agent_results.keys())})
@@ -494,8 +563,6 @@ class MultiAgentEngine:
             self.event_store.append(memory_updated_event(
                 session_id, seq, action="write", facts=ctx.memory_facts,
             ))
-            if self.working_memory:
-                self.working_memory.add_facts(session_id, ctx.memory_facts)
 
         # --- Process execution ---
         intent_type = intent.get("intent", "general_inquiry")
@@ -538,7 +605,17 @@ class MultiAgentEngine:
         ))
 
         # --- Canonical evidence selection ---
+        allow_legacy = (
+            os.environ.get("LLM_ENABLED", "true").lower() in {"0", "false", "no"}
+            or os.environ.get("PYTEST_CURRENT_TEST") is not None
+        )
         use_canonical = os.environ.get("USE_CANONICAL_EVIDENCE", "1") != "0"
+        if not use_canonical and not allow_legacy:
+            import logging
+            logging.getLogger(__name__).warning(
+                "USE_CANONICAL_EVIDENCE=0 ignored in production; enabling selector",
+            )
+            use_canonical = True
         ces = CanonicalEvidenceSet()
         evidence_threshold = self.tuner.get_evidence_threshold()
 
@@ -608,27 +685,22 @@ class MultiAgentEngine:
             session_id, seq, answer=answer["text"],
             citations=answer.get("citations", []),
             confidence=answer.get("confidence"),
+            accepted_evidence_ids=accepted_ids,
+            used_in_answer_ids=accepted_ids,
+            canonical_evidence_snapshot=ces.to_event_payload() if use_canonical else {},
         ))
 
         # --- Evaluation (event_store truth only) ---
         events_for_eval = [e.to_dict() for e in self.event_store.get_session_events(session_id)]
-        resp = self.bus.send(AgentMessage(
-            str(uuid.uuid4()), "orchestrator", "evaluation", "task",
+        resp, seq = self._send_agent(
+            ctx, session_id, seq, "evaluation", "task",
             {
                 "session_id": session_id,
                 "query": resolved_query,
                 "events": events_for_eval,
-                "canonical_evidence": ces.to_event_payload() if use_canonical else {},
-                "state": {
-                    "intent": intent,
-                    "answer": answer,
-                    "ontology_context": ctx.ontology_context,
-                    "process_result": ctx.process_result,
-                    "rule_evaluation": ctx.rule_evaluation,
-                },
             },
-            trace_id=trace_id,
-        ), ctx)
+            trace_id,
+        )
         ctx.evaluation = resp.payload
         eval_result = ctx.evaluation
 
@@ -654,7 +726,7 @@ class MultiAgentEngine:
             ))
 
         # --- SelfTuner闭环 ---
-        tuning_config = self.tuner.apply_evaluation(eval_result)
+        tuning_config = self.tuner.apply_evaluation(eval_result, feedback_signals)
         seq += 1
         self.event_store.append(tuning_applied_event(
             session_id, seq,

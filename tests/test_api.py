@@ -5,9 +5,27 @@ Tests the POST /query endpoint and GET /sessions/{id} endpoint
 using FastAPI's TestClient.
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.main import app
+from infra.db.event_store import SqliteEventStore
+from infra.db.session_store import WorkingMemory
+import apps.api.main as api_main
+
+
+@pytest.fixture(autouse=True)
+def isolated_api_db(tmp_path, monkeypatch):
+    """Use per-test SQLite paths so API tests do not touch data/events.db."""
+    store = SqliteEventStore(str(tmp_path / "events.db"))
+    wm = WorkingMemory(str(tmp_path / "sessions.db"))
+    monkeypatch.setattr(api_main, "_persistent_store", store)
+    monkeypatch.setattr(api_main, "_working_memory", wm)
+    monkeypatch.setattr(api_main.engine, "event_store", store)
+    monkeypatch.setattr(api_main.engine, "working_memory", wm)
+    yield
+    store.close()
+
 
 client = TestClient(app)
 
@@ -91,6 +109,10 @@ class TestSessionTraceEndpoint:
     def test_get_nonexistent_session_returns_404(self):
         response = client.get("/sessions/nonexistent-id")
         assert response.status_code == 404
+
+    def test_get_invalid_session_id_rejected(self):
+        response = client.get("/sessions/not valid!")
+        assert response.status_code == 422
 
     def test_reconstructed_state_matches_original(self):
         create_resp = client.post("/query", json={"query": "replay test"})
