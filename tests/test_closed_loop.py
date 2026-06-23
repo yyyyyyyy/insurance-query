@@ -15,6 +15,13 @@ from runtime.engine.event_store import evidence_selected_event
 from runtime.engine.reducer import reduce
 
 
+def _last_event(event_trace, event_type: str):
+    """Return the latest event of a type (event_trace is cumulative per session)."""
+    matches = [e for e in event_trace if e["event_type"] == event_type]
+    assert matches, f"missing {event_type} in event trace"
+    return matches[-1]
+
+
 class TestCanonicalEvidenceLifecycle:
     def test_canonical_evidence_lifecycle(self):
         ces = CanonicalEvidenceSet()
@@ -102,14 +109,16 @@ class TestClosedLoopRuntime:
         assert "retrieval" in result["evaluation"].get("dimensions", {})
 
     def test_memory_follow_up_changes_retrieval_and_answer(self):
-        wm = WorkingMemory(db_path=os.path.join(tempfile.gettempdir(), "cl_loop_mem.db"))
+        wm = WorkingMemory(
+            db_path=os.path.join(tempfile.gettempdir(), f"cl_loop_mem_{os.getpid()}.db"),
+        )
         engine = MultiAgentEngine(working_memory=wm)
         sid = "cl-loop-mem-001"
         r1 = engine.query("e生保的免赔额是多少", session_id=sid)
         r2 = engine.query("它的等待期呢", session_id=sid)
 
-        retr1 = next(e for e in r1["event_trace"] if e["event_type"] == "RETRIEVAL_EXECUTED")
-        retr2 = next(e for e in r2["event_trace"] if e["event_type"] == "RETRIEVAL_EXECUTED")
+        retr1 = _last_event(r1["event_trace"], "RETRIEVAL_EXECUTED")
+        retr2 = _last_event(r2["event_trace"], "RETRIEVAL_EXECUTED")
         assert retr2["payload"].get("query") != retr1["payload"].get("query") or "P001" in retr2["payload"].get("query", "")
 
         assert (
@@ -118,8 +127,8 @@ class TestClosedLoopRuntime:
             or "等待期" in r2["answer"]["text"]
         )
 
-        sel1 = next(e for e in r1["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")
-        sel2 = next(e for e in r2["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")
+        sel1 = _last_event(r1["event_trace"], "EVIDENCE_SELECTED")
+        sel2 = _last_event(r2["event_trace"], "EVIDENCE_SELECTED")
         assert sel1["payload"].get("accepted_ids") != sel2["payload"].get("accepted_ids") or r1["answer"]["text"] != r2["answer"]["text"]
 
     def test_memory_facts_persist_after_restart(self):
