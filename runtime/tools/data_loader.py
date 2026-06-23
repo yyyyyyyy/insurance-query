@@ -56,7 +56,6 @@ def _catalog_to_runtime(product_entry: Dict[str, Any]) -> Dict[str, Any]:
 
     # Category mapping
     category = product_entry.get("category", "")
-    sub = product_entry.get("sub_category", "")
     p["product_type"] = _resolve_product_type(category)
     p["company"] = product_entry.get("company", "")
     p["company_short"] = _resolve_company_short(p["company"])

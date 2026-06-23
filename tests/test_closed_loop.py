@@ -178,7 +178,7 @@ class TestClosedLoopRuntime:
             assert weights_differ or rank_differ or score_differ
 
         sel1 = next(e for e in r1["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")
-        sel2 = next(e for e in r2["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")
+        _sel2 = next(e for e in r2["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")
         # accepted set may differ when ranking changes
         assert sel1["payload"].get("accepted_ids") is not None
 

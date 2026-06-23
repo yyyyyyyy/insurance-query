@@ -1,7 +1,5 @@
 """API key middleware tests."""
 
-import asyncio
-
 import pytest
 from starlette.requests import Request
 from starlette.responses import Response

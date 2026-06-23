@@ -4,8 +4,6 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
 from knowledge.ingestion.document_fetcher import (
     DocumentFetcher,
     build_insurer_domains,

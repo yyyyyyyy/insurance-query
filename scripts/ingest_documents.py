@@ -13,7 +13,6 @@ sys.path.insert(0, str(ROOT))
 
 from knowledge.ingestion.policy_ingest import (  # noqa: E402
     OUTPUT_PATH,
-    POLICY_DOCS_DIR,
     init_manifest_from_catalog,
     ingest_all,
     list_ingest_status,
@@ -23,7 +22,7 @@ from knowledge.ingestion.policy_ingest import (  # noqa: E402
 def cmd_init(_: argparse.Namespace) -> int:
     entries = init_manifest_from_catalog(overwrite=False)
     print(f"Product manifest: {len(entries)} entries")
-    print(f"Regulation manifest: run `python scripts/fetch_documents.py --init`")
+    print("Regulation manifest: run `python scripts/fetch_documents.py --init`")
     return 0
 
 

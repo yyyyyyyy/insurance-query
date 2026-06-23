@@ -117,7 +117,6 @@ class SelfTuner:
             self.config.total_queries += 1
 
             dims = evaluation.get("dimensions", {})
-            total_score = evaluation.get("total_score", 50)
 
             if feedback_signals:
                 for signal in feedback_signals:

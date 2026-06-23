@@ -473,7 +473,6 @@ class DocumentFetcher:
             return FetchResult(rid, "regulation", source_url, "skipped",
                                message="URL not in regulatory allowlist")
 
-        safe_title = re.sub(r'[\\/:*?"<>|]', "_", title)[:40]
         out_path = REG_DOCS_DIR / regulation_output_filename(regulation, ".txt")
 
         if out_path.exists() and not force:

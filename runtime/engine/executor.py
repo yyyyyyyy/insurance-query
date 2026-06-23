@@ -116,7 +116,6 @@ def execute_product_search(params: Dict[str, Any]) -> Dict[str, Any]:
     """Search for insurance products (mock implementation)."""
     query = params.get("query", "")
     top_k = params.get("top_k", 5)
-    search_mode = params.get("search_mode", "semantic")
 
     results = []
     for product in MOCK_PRODUCT_DB:
@@ -146,6 +145,8 @@ def execute_document_search(params: Dict[str, Any]) -> Dict[str, Any]:
             continue
         results.append({"id": doc["id"], "title": doc["title"],
                         "type": doc["type"], "chunks": doc["chunks"]})
+        if len(results) >= top_k:
+            break
 
     evidence = [
         {"document_id": r["id"], "title": r["title"],

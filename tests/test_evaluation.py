@@ -43,7 +43,6 @@ class TestTraceCapture:
 
     def test_trace_immutability(self):
         t = self.make_trace()
-        orig = t.to_dict()
         t2 = self.make_trace()
         assert t.trace_id != t2.trace_id  # Unique trace IDs
 
