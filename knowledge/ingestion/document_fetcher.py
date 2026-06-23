@@ -189,17 +189,30 @@ def html_to_text(html: str) -> str:
         html = re.sub(pattern, "", html, flags=re.S | re.I)
 
     content_match = re.search(
-        r'<div[^>]*class="[^"]*pages_content[^"]*"[^>]*>(.*?)</div>',
+        r'id=["\']UCAP-CONTENT["\'][^>]*>(.*)',
         html, re.S | re.I,
     )
     if content_match:
         html = content_match.group(1)
-    else:
-        article_match = re.search(
-            r"<article[^>]*>(.*?)</article>", html, re.S | re.I,
+        footer = re.search(
+            r'<div[^>]*class="[^"]*(?:policyLibraryOverview_footer|related|footer)[^"]*"',
+            html, re.I,
         )
-        if article_match:
-            html = article_match.group(1)
+        if footer:
+            html = html[:footer.start()]
+    else:
+        content_match = re.search(
+            r'<div[^>]*class="[^"]*pages_content[^"]*"[^>]*>(.*)',
+            html, re.S | re.I,
+        )
+        if content_match:
+            html = content_match.group(1)
+        else:
+            article_match = re.search(
+                r"<article[^>]*>(.*)</article>", html, re.S | re.I,
+            )
+            if article_match:
+                html = article_match.group(1)
 
     text = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
     text = re.sub(r"</p>", "\n\n", text, flags=re.I)

@@ -1,0 +1,228 @@
+{
+  "generated_at": "2026-06-23T06:39:03Z",
+  "summary": {
+    "total": 20,
+    "success": 2,
+    "skipped": 18,
+    "error": 0
+  },
+  "allowed_insurer_domains": [
+    "health.pingan.com",
+    "www.cpic.com.cn",
+    "www.fosunhealth.com",
+    "www.generalichina.com",
+    "www.guofushengming.com",
+    "www.hg-life.com",
+    "www.ht-life.com",
+    "www.kli.com.cn",
+    "www.picc.com",
+    "www.picclife.cn",
+    "www.pichealth.com",
+    "www.pingan.com",
+    "www.rh-health.com",
+    "www.tk.cn",
+    "www.zhongan.com"
+  ],
+  "results": [
+    {
+      "target_id": "REG001",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2019-12/04/content_5458542.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG001_健康保险管理办法.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "e25c69fa905756a8"
+    },
+    {
+      "target_id": "REG002",
+      "target_type": "regulation",
+      "source_url": "http://www.iachina.cn/art/2020/11/5/art_22_104708.html",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG002_重大疾病保险疾病定义使用规范(2020修订版).txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "9c7f03692894b326"
+    },
+    {
+      "target_id": "REG003",
+      "target_type": "regulation",
+      "source_url": "https://www.nfra.gov.cn/chinese/docfile/2025/ca8d8237bdf746e9a3bff26a3bf2af39.pdf",
+      "status": "success",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG003_中华人民共和国保险法(2015修正).pdf",
+      "message": "downloaded PDF",
+      "bytes_written": 264943,
+      "source_hash": "2d6d21bee399113d"
+    },
+    {
+      "target_id": "REG004",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/2020-12/14/content_5725858.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG004_互联网保险业务监管办法.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "23c88fa7a66702b7"
+    },
+    {
+      "target_id": "REG005",
+      "target_type": "regulation",
+      "source_url": "https://jrj.beijing.gov.cn/jrgzdt/202310/t20231008_3271571.html",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG005_保险销售行为管理办法.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "0fe3b2353891739c"
+    },
+    {
+      "target_id": "REG006",
+      "target_type": "regulation",
+      "source_url": "https://www.nfra.gov.cn/chinese/docfile/2020/a3f08f896a4e49c498810c3853a33d44.pdf",
+      "status": "success",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG006_保险公司偿付能力管理规定.pdf",
+      "message": "downloaded PDF",
+      "bytes_written": 159299,
+      "source_hash": "28af51f18a2ee36c"
+    },
+    {
+      "target_id": "REG007",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2021-01/12/content_5579193.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG007_关于规范短期健康保险业务有关问题的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "727eead4b203b91b"
+    },
+    {
+      "target_id": "REG008",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2020-04/03/content_5498878.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG008_关于长期医疗保险产品费率调整有关问题的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "a91a8bbb7b1d900a"
+    },
+    {
+      "target_id": "REG009",
+      "target_type": "regulation",
+      "source_url": "https://www.nfra.gov.cn/cn/view/pages/governmentDetail.html?docId=971285&generaltype=1&itemId=861",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG009_关于规范保险公司城市定制型商业医疗保险业务的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "422530ab8bb3eb7b"
+    },
+    {
+      "target_id": "REG010",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/gongbao/content/2010/content_1585443.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG010_保险公司管理规定.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "e300b0a39e2a587e"
+    },
+    {
+      "target_id": "REG011",
+      "target_type": "regulation",
+      "source_url": "https://www.nfra.gov.cn/cn/view/pages/ItemDetail.html?docId=372709&generaltype=0&itemId=925",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG011_关于规范人身保险产品开发设计行为的通知(134号文).txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "7ed7feb12959a133"
+    },
+    {
+      "target_id": "REG012",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2018-12/31/content_5451131.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG012_关于进一步规范保险理赔服务有关事项的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "f4cc1643601cba82"
+    },
+    {
+      "target_id": "REG013",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2015-11/13/content_10289.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG013_关于加强金融消费者权益保护工作的指导意见.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "2eaac6a86a1fdb73"
+    },
+    {
+      "target_id": "REG014",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/202310/content_6908481.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG014_银行保险机构消费者权益保护管理办法.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "48386e2547855da5"
+    },
+    {
+      "target_id": "REG015",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/202307/content_6890400.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG015_关于扩大商业健康保险个人所得税优惠政策适用产品范围的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "0dbac9e0fc8e7994"
+    },
+    {
+      "target_id": "REG016",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2021-10/15/content_5642766.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG016_关于规范意外伤害保险经营有关问题的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "26a60d33df547735"
+    },
+    {
+      "target_id": "REG017",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2022-11/14/content_5726811.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG017_保险保障基金管理办法.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "ca8e0804e53c76c0"
+    },
+    {
+      "target_id": "REG018",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2020-03/26/content_5495814.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG018_关于规范健康保险委托管理业务有关事项的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "2cc2e26e535c0f48"
+    },
+    {
+      "target_id": "REG019",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/202412/content_6993886.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG019_关于实施保险公司偿付能力监管规则(Ⅱ)的通知.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "6524f22b2d498a7b"
+    },
+    {
+      "target_id": "REG020",
+      "target_type": "regulation",
+      "source_url": "https://www.gov.cn/zhengce/zhengceku/2019-12/03/content_5457841.htm",
+      "status": "skipped",
+      "output_path": "C:\\Users\\zhouyao\\PycharmProjects\\insurance-query\\knowledge_pack\\regulations\\documents\\REG020_保险资产负债管理监管规则.txt",
+      "message": "file exists (use --force)",
+      "bytes_written": 0,
+      "source_hash": "ff9a40526532bbab"
+    }
+  ]
+}
