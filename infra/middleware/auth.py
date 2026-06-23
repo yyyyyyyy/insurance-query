@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import os
 from typing import Callable, Optional, Set
 
@@ -34,7 +35,7 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         token = _extract_token(request)
-        if token != expected:
+        if not hmac.compare_digest(token or "", expected):
             return JSONResponse(
                 status_code=401,
                 content={

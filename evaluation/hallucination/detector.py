@@ -110,7 +110,7 @@ class HallucinationDetector:
     def _extract_entities(text: str) -> Set[str]:
         # Extract Chinese noun phrases (2-4 chars, common insurance terms)
         patterns = [
-            r'[保证续保|等待期|免赔额|犹豫期|恶性肿瘤|重疾|轻症|中症|住院医疗|门诊手术]',
+            r'(?:保证续保|等待期|免赔额|犹豫期|恶性肿瘤|重疾|轻症|中症|住院医疗|门诊手术)',
             r'[\u4e00-\u9fff]{2,4}(?:险|金|期|额|症|病|保)',
         ]
         entities = set()

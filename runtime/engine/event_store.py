@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import uuid
 from abc import ABC
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 
 class EventType(str, Enum):
@@ -459,6 +460,8 @@ class EventStore:
     def __init__(self):
         self._events: List[Event] = []
         self._session_index: Dict[str, List[int]] = {}  # session_id -> list of indices
+        self._batch_depth = 0
+        self._batch_memory_snapshot: Optional[int] = None
 
     def append(self, event: Event) -> Event:
         """Append an event to the log. Returns the stored event (immutable)."""
@@ -522,13 +525,36 @@ class EventStore:
     # to group many appends into a single commit.
 
     def begin_batch(self) -> None:
-        """Begin a batch transaction. No-op for in-memory stores."""
-        return None
+        """Begin a batch transaction; in-memory store snapshots for rollback."""
+        if self._batch_depth == 0:
+            self._batch_memory_snapshot = len(self._events)
+        self._batch_depth += 1
 
     def commit_batch(self) -> None:
-        """Commit a pending batch transaction. No-op for in-memory stores."""
-        return None
+        """Commit a pending batch transaction."""
+        if self._batch_depth <= 0:
+            return
+        self._batch_depth -= 1
+        if self._batch_depth == 0:
+            self._batch_memory_snapshot = None
 
     def rollback_batch(self) -> None:
-        """Roll back a pending batch transaction. No-op for in-memory stores."""
-        return None
+        """Roll back a pending batch transaction and in-memory events."""
+        if self._batch_depth <= 0:
+            return
+        snapshot = self._batch_memory_snapshot
+        self._batch_depth = 0
+        self._batch_memory_snapshot = None
+        if snapshot is not None:
+            self._truncate_to(snapshot)
+
+    @contextmanager
+    def transaction(self) -> Iterator["EventStore"]:
+        """Atomic append scope: all events or none (event-sourcing invariant)."""
+        self.begin_batch()
+        try:
+            yield self
+            self.commit_batch()
+        except Exception:
+            self.rollback_batch()
+            raise

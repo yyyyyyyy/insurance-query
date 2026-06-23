@@ -10,3 +10,6 @@ build/
 .cursor/
 .idea/
 data/
+knowledge_pack/fetch/fetch_report.json
+knowledge_pack/chunks/ingested_documents.json
+knowledge_pack/chunks/ingestion_report.json

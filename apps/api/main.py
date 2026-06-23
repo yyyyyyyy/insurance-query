@@ -213,7 +213,9 @@ async def get_session(session_id: SessionIdPath):
 
 @app.post("/query/stream", tags=["Runtime"])
 async def process_query_stream(request: QueryRequest):
-    """Stream query results as Server-Sent Events.
+    """非增量流式：整体延迟与 ``POST /query`` 相同，仅提供 SSE 心跳与分阶段事件。
+
+    Stream query results as Server-Sent Events.
 
     NOTE: this endpoint runs the full pipeline to completion and then emits
     phase events, so overall latency matches ``POST /query``. The advantage

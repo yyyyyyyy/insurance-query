@@ -178,11 +178,6 @@ def _template_answer(
     if evidence:
         lines.append("")
         lines.append("---")
-        srcs = set()
-        for e in evidence:
-            src = e.get("source_type", e.get("source", ""))
-            if src:
-                srcs.add(src)
         lines.append(f"*本回答基于 {len(evidence)} 条证据*")
 
     return "\n".join(lines)

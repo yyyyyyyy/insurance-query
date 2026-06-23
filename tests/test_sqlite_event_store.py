@@ -9,11 +9,12 @@ from infra.db.event_store import SqliteEventStore
 class TestSqliteEventStore:
     def test_batch_rollback_truncates_memory(self, tmp_event_store):
         store = tmp_event_store
-        store.begin_batch()
-        store.append(user_query_event("s1", 1, "first"))
-        store.append(user_query_event("s1", 2, "second"))
-        assert store.count() == 2
-        store.rollback_batch()
+        with pytest.raises(Exception):
+            with store.transaction():
+                store.append(user_query_event("s1", 1, "first"))
+                store.append(user_query_event("s1", 2, "second"))
+                assert store.count() == 2
+                raise RuntimeError("abort turn")
         assert store.count() == 0
 
     def test_batch_commit_persists(self, tmp_event_store):

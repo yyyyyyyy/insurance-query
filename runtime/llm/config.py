@@ -1,4 +1,8 @@
-"""LLM configuration — loaded from environment variables."""
+"""LLM configuration — loaded from environment variables.
+
+Environment variables are read at first ``llm_settings()`` call (cached).
+Set env vars before process start, or call ``clear_llm_settings_cache()``.
+"""
 
 from __future__ import annotations
 
@@ -77,3 +81,8 @@ def llm_settings() -> LLMSettings:
         max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "2048")),
         temperature=float(os.environ.get("LLM_TEMPERATURE", "0.3")),
     )
+
+
+def clear_llm_settings_cache() -> None:
+    """Clear cached LLM settings (for tests or hot env reload)."""
+    llm_settings.cache_clear()

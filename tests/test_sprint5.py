@@ -116,7 +116,10 @@ class TestCache:
         c = TraceAwareCache()
         k1 = c.tool_key("p", {"a": 1})
         k2 = c.tool_key("p", {"a": 1})
-        assert k1==k2
+        assert k1 == k2
+        k3 = c.tool_key("p", {"b": 2, "a": 1})
+        k4 = c.tool_key("p", {"a": 1, "b": 2})
+        assert k3 == k4
     def test_invalidate(self):
         c = TraceAwareCache()
         c.set("tool", "k1", "v1")

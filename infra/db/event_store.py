@@ -158,40 +158,40 @@ class SqliteEventStore(EventStore):
             return super().append(event)
 
     def begin_batch(self) -> None:
-        """Start a batch transaction to group many appends into one commit."""
-        with self._write_lock:
-            self._batch_depth += 1
-            if self._batch_depth == 1:
-                self._batch_memory_snapshot = len(self._events)
-                if self._conn:
-                    self._conn.execute("BEGIN")
+        """Start a batch transaction; holds write lock until commit/rollback."""
+        if self._batch_depth == 0:
+            self._write_lock.acquire()
+            self._batch_memory_snapshot = len(self._events)
+            if self._conn:
+                self._conn.execute("BEGIN")
+        self._batch_depth += 1
 
     def commit_batch(self) -> None:
-        """Commit a pending batch transaction."""
-        with self._write_lock:
-            if self._batch_depth <= 0:
-                return
-            self._batch_depth -= 1
-            if self._batch_depth == 0:
-                self._batch_memory_snapshot = None
-                if self._conn:
-                    self._conn.commit()
-
-    def rollback_batch(self) -> None:
-        """Roll back a pending batch transaction and in-memory events."""
-        with self._write_lock:
-            if self._batch_depth <= 0:
-                return
-            snapshot = self._batch_memory_snapshot
-            self._batch_depth = 0
+        """Commit a pending batch transaction and release the write lock."""
+        if self._batch_depth <= 0:
+            return
+        self._batch_depth -= 1
+        if self._batch_depth == 0:
             self._batch_memory_snapshot = None
             if self._conn:
-                try:
-                    self._conn.rollback()
-                except sqlite3.Error:
-                    pass
-            if snapshot is not None:
-                self._truncate_to(snapshot)
+                self._conn.commit()
+            self._write_lock.release()
+
+    def rollback_batch(self) -> None:
+        """Roll back a pending batch transaction and release the write lock."""
+        if self._batch_depth <= 0:
+            return
+        snapshot = self._batch_memory_snapshot
+        self._batch_depth = 0
+        self._batch_memory_snapshot = None
+        if self._conn:
+            try:
+                self._conn.rollback()
+            except sqlite3.Error:
+                pass
+        if snapshot is not None:
+            self._truncate_to(snapshot)
+        self._write_lock.release()
 
     def clear(self) -> None:
         """Clear all events from both SQLite and memory."""

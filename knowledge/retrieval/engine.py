@@ -211,21 +211,23 @@ class HybridRetriever:
             for cid, score, _ in chroma_hits:
                 chroma_results[cid] = score
 
-        scores = []
+        candidates: List[Tuple[Chunk, float, float, float]] = []
         for i, chunk in enumerate(self._chunk_list):
-            # Filter by document type if specified
             if document_types:
                 doc_meta = self.chunk_store.get_document_meta(chunk.document_id)
                 if doc_meta and doc_meta.document_type not in document_types:
                     continue
 
-            bm25_score = self.bm25.score(query, i)
+            bm25_raw = self.bm25.score(query, i)
 
-            # Vector score: prefer ChromaDB pre-computed score, fallback to brute-force
             if chunk.chunk_id in chroma_results:
                 vector_score = chroma_results[chunk.chunk_id]
             else:
-                chunk_vec = chunk.embedding if chunk.embedding is not None else self.embedding_gen.encode(chunk.content)
+                chunk_vec = (
+                    chunk.embedding
+                    if chunk.embedding is not None
+                    else self.embedding_gen.encode(chunk.content)
+                )
                 if hasattr(self.embedding_gen, 'similarity'):
                     vector_score = self.embedding_gen.similarity(query_vec, chunk_vec)
                 else:
@@ -234,7 +236,6 @@ class HybridRetriever:
                     b = chunk_vec.reshape(1, -1)
                     vector_score = float(cosine_similarity(a, b)[0][0])
 
-            # Ontology boost
             onto_score = 0.0
             if ontology_entities and hasattr(chunk, 'metadata'):
                 linked_entities = chunk.metadata.get('entity_links', [])
@@ -242,11 +243,29 @@ class HybridRetriever:
                 if overlap > 0:
                     onto_score = min(overlap / len(ontology_entities), 0.3)
 
-            total = bm25_weight * bm25_score + vector_weight * vector_score + ontology_boost * onto_score
+            candidates.append((chunk, bm25_raw, float(vector_score), onto_score))
+
+        if not candidates:
+            return []
+
+        bm25_raws = [c[1] for c in candidates]
+        bm25_min, bm25_max = min(bm25_raws), max(bm25_raws)
+        bm25_span = bm25_max - bm25_min
+
+        scores = []
+        for chunk, bm25_raw, vector_score, onto_score in candidates:
+            bm25_norm = (bm25_raw - bm25_min) / bm25_span if bm25_span > 0 else 0.0
+            total = (
+                bm25_weight * bm25_norm
+                + vector_weight * vector_score
+                + ontology_boost * onto_score
+            )
             if total >= min_score:
                 feature_contribution = {
-                    "bm25": round(bm25_score, 6),
-                    "vector": round(float(vector_score), 6),
+                    "bm25_raw": round(bm25_raw, 6),
+                    "bm25_norm": round(bm25_norm, 6),
+                    "bm25": round(bm25_norm, 6),
+                    "vector": round(vector_score, 6),
                     "ontology": round(onto_score, 6),
                     "weights": weights,
                     "total": round(total, 6),

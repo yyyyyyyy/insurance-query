@@ -39,7 +39,15 @@ jobs:
         run: |
           ruff check . --ignore=E501,E402 --exclude=.git,__pycache__,.pytest_cache,venv,.venv,knowledge_pack
 
+      - name: Fast concurrency gate
+        run: |
+          pytest tests/test_sqlite_event_store.py tests/test_concurrency.py -q --tb=short --timeout=120
+        env:
+          LLM_ENABLED: false
+          EMBEDDING_FAST_MODE: true
+
       - name: Type check with mypy (expanded scope)
+        # TODO: tighten once mypy error count is near zero
         continue-on-error: true
         run: |
           mypy runtime evaluation infra apps knowledge

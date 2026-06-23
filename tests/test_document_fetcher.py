@@ -7,11 +7,13 @@ from unittest.mock import MagicMock
 from knowledge.ingestion.document_fetcher import (
     DocumentFetcher,
     build_insurer_domains,
+    fetch_regulations,
     html_to_text,
     init_regulation_manifest,
     is_content_url,
     is_url_allowed,
     score_clause_link,
+    sync_regulation_manifest_from_disk,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,10 +59,23 @@ class TestAllowlist:
 
 class TestHtmlParsing:
     def test_html_to_text_strips_tags(self):
-        html = "<html><body><p>第一条 等待期30日</p><p>第二条 免赔额1万</p></body></html>"
+        html = "<html><body><div class=\"pages_content\"><p>第一条 等待期30日</p><p>第二条 免赔额1万</p></div></body></html>"
         text = html_to_text(html)
         assert "等待期" in text
         assert "<p>" not in text
+
+    def test_html_to_text_ucap_content_strips_footer(self):
+        html = """
+        <div id="UCAP-CONTENT">
+        <p>第一条 为规范健康保险经营，制定本办法。</p>
+        <div class="policyLibraryOverview_footer">相关链接</div>
+        <p>不应出现</p>
+        </div>
+        """
+        text = html_to_text(html)
+        assert "第一条" in text
+        assert "不应出现" not in text
+        assert "相关链接" not in text
 
     def test_score_clause_pdf_link(self):
         assert score_clause_link("https://x.com/clause.pdf", "产品条款") > 0
@@ -123,5 +138,98 @@ class TestRegulationManifest:
         }), encoding="utf-8")
         monkeypatch.setattr(df, "REGULATIONS_CATALOG", reg_cat)
         monkeypatch.setattr(df, "REG_MANIFEST", tmp_path / "manifest.json")
+        monkeypatch.setattr(df, "REG_DOCS_DIR", tmp_path / "documents")
         data = init_regulation_manifest()
         assert data["meta"]["total"] == 1
+        assert data["documents"][0]["file"].endswith(".placeholder")
+
+    def test_init_regulation_manifest_uses_disk_file(self, tmp_path, monkeypatch):
+        import knowledge.ingestion.document_fetcher as df
+
+        reg_dir = tmp_path / "documents"
+        reg_dir.mkdir()
+        on_disk = reg_dir / "REG001_测试法规.txt"
+        on_disk.write_text("正文", encoding="utf-8")
+
+        reg_cat = tmp_path / "reg_catalog.json"
+        reg_cat.write_text(json.dumps({
+            "regulations": [{
+                "regulation_id": "REG001",
+                "title": "测试法规",
+                "source_url": "https://www.gov.cn/zhengce/test.htm",
+            }]
+        }), encoding="utf-8")
+        monkeypatch.setattr(df, "REGULATIONS_CATALOG", reg_cat)
+        monkeypatch.setattr(df, "REG_MANIFEST", tmp_path / "manifest.json")
+        monkeypatch.setattr(df, "REG_DOCS_DIR", reg_dir)
+
+        data = init_regulation_manifest()
+        assert data["documents"][0]["file"] == "documents/REG001_测试法规.txt"
+
+    def test_fetch_regulations_preserves_manifest_after_skip(self, tmp_path, monkeypatch):
+        import knowledge.ingestion.document_fetcher as df
+
+        reg_dir = tmp_path / "documents"
+        reg_dir.mkdir()
+        txt_file = reg_dir / "REG001_测试法规.txt"
+        txt_file.write_text("正文", encoding="utf-8")
+
+        reg_cat = tmp_path / "reg_catalog.json"
+        reg_cat.write_text(json.dumps({
+            "regulations": [{
+                "regulation_id": "REG001",
+                "title": "测试法规",
+                "source_url": "https://www.gov.cn/zhengce/test.htm",
+            }]
+        }), encoding="utf-8")
+        manifest_path = tmp_path / "manifest.json"
+        monkeypatch.setattr(df, "REGULATIONS_CATALOG", reg_cat)
+        monkeypatch.setattr(df, "REG_MANIFEST", manifest_path)
+        monkeypatch.setattr(df, "REG_DOCS_DIR", reg_dir)
+        monkeypatch.setattr(df, "FETCH_REPORT", tmp_path / "fetch_report.json")
+        monkeypatch.setattr(df, "PRODUCTS_CATALOG", tmp_path / "products.json")
+        (tmp_path / "products.json").write_text(json.dumps({"products": []}), encoding="utf-8")
+
+        init_regulation_manifest()
+        assert json.loads(manifest_path.read_text(encoding="utf-8"))["documents"][0]["file"].endswith(".txt")
+
+        fetch_regulations()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["documents"][0]["file"] == "documents/REG001_测试法规.txt"
+
+    def test_sync_regulation_manifest_from_disk(self, tmp_path, monkeypatch):
+        import knowledge.ingestion.document_fetcher as df
+
+        reg_dir = tmp_path / "documents"
+        reg_dir.mkdir()
+        (reg_dir / "REG001_测试法规.pdf").write_bytes(b"%PDF")
+
+        reg_cat = tmp_path / "reg_catalog.json"
+        reg_cat.write_text(json.dumps({
+            "regulations": [{
+                "regulation_id": "REG001",
+                "title": "测试法规",
+                "source_url": "https://www.gov.cn/zhengce/test.htm",
+            }]
+        }), encoding="utf-8")
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(json.dumps({
+            "meta": {"version": "1.0", "total": 1},
+            "documents": [{
+                "file": "documents/REG001_测试法规.placeholder",
+                "document_id": "DOC_REG001",
+                "title": "测试法规",
+                "document_type": "regulation",
+                "regulation_id": "REG001",
+                "source_url": "https://www.gov.cn/zhengce/test.htm",
+                "enabled": True,
+            }],
+        }), encoding="utf-8")
+
+        monkeypatch.setattr(df, "REGULATIONS_CATALOG", reg_cat)
+        monkeypatch.setattr(df, "REG_MANIFEST", manifest_path)
+        monkeypatch.setattr(df, "REG_DOCS_DIR", reg_dir)
+
+        sync_regulation_manifest_from_disk()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["documents"][0]["file"] == "documents/REG001_测试法规.pdf"

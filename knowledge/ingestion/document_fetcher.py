@@ -195,7 +195,7 @@ def html_to_text(html: str) -> str:
     if content_match:
         html = content_match.group(1)
         footer = re.search(
-            r'<div[^>]*class="[^"]*(?:policyLibraryOverview_footer|related|footer)[^"]*"',
+            r'<div[^>]*class="[^"]*(?:policyLibraryOverview_footer|related_links|site-footer)[^"]*"',
             html, re.I,
         )
         if footer:
@@ -487,13 +487,15 @@ class DocumentFetcher:
                                message="URL not in regulatory allowlist")
 
         out_path = REG_DOCS_DIR / regulation_output_filename(regulation, ".txt")
+        existing = find_regulation_file(regulation)
 
-        if out_path.exists() and not force:
+        if existing and not force:
+            self._sync_regulation_manifest_file(rid, existing)
             return FetchResult(
                 rid, "regulation", source_url, "skipped",
-                output_path=str(out_path),
+                output_path=str(existing),
                 message="file exists (use --force)",
-                source_hash=_file_hash(out_path),
+                source_hash=_file_hash(existing),
             )
 
         try:
@@ -563,17 +565,65 @@ def load_policy_manifest() -> Dict[str, Any]:
     return _read_json(POLICY_MANIFEST)
 
 
-def init_regulation_manifest() -> Dict[str, Any]:
+def find_regulation_file(regulation: Dict[str, Any]) -> Optional[Path]:
+    """Return on-disk regulation file (.txt or .pdf) if present."""
+    for ext in (".txt", ".pdf"):
+        path = REG_DOCS_DIR / regulation_output_filename(regulation, ext)
+        if path.exists():
+            return path
+    return None
+
+
+def _regulation_manifest_file_field(regulation: Dict[str, Any]) -> str:
+    existing = find_regulation_file(regulation)
+    if existing:
+        return f"documents/{existing.name}"
+    return f"documents/{regulation_output_filename(regulation, '.placeholder')}"
+
+
+def sync_regulation_manifest_from_disk() -> Dict[str, Any]:
+    """Align manifest file paths with on-disk regulation documents."""
+    if not REG_MANIFEST.exists():
+        return init_regulation_manifest(overwrite=True)
+
+    manifest = _read_json(REG_MANIFEST)
+    catalog_by_id = {
+        r["regulation_id"]: r
+        for r in _read_json(REGULATIONS_CATALOG).get("regulations", [])
+    }
+    updated = False
+    for doc in manifest.get("documents", []):
+        rid = doc.get("regulation_id")
+        reg = catalog_by_id.get(rid)
+        if not reg:
+            continue
+        expected = _regulation_manifest_file_field(reg)
+        if doc.get("file") != expected:
+            doc["file"] = expected
+            updated = True
+        url = reg.get("source_url", "")
+        if url and doc.get("source_url") != url:
+            doc["source_url"] = url
+            updated = True
+    if updated:
+        manifest.setdefault("meta", {})["updated"] = _now_iso()
+        _write_json(REG_MANIFEST, manifest)
+    return manifest
+
+
+def init_regulation_manifest(*, overwrite: bool = True) -> Dict[str, Any]:
     """Build regulations/manifest.json from catalog content URLs."""
+    if REG_MANIFEST.exists() and not overwrite:
+        return sync_regulation_manifest_from_disk()
+
     catalog = _read_json(REGULATIONS_CATALOG)
     documents = []
     for reg in catalog.get("regulations", []):
         url = reg.get("source_url", "")
         if not is_content_url(url):
             continue
-        safe_title = re.sub(r'[\\/:*?"<>|]', "_", reg.get("title", ""))[:40]
         documents.append({
-            "file": f"documents/{reg['regulation_id']}_{safe_title}.placeholder",
+            "file": _regulation_manifest_file_field(reg),
             "document_id": f"DOC_{reg['regulation_id']}",
             "title": reg.get("title", ""),
             "document_type": "regulation",
@@ -637,7 +687,10 @@ def fetch_regulations(
     force: bool = False,
     delay_sec: float = DEFAULT_DELAY_SEC,
 ) -> Tuple[List[FetchResult], Dict[str, Any]]:
-    init_regulation_manifest()
+    if not REG_MANIFEST.exists():
+        init_regulation_manifest(overwrite=True)
+    else:
+        sync_regulation_manifest_from_disk()
     catalog = _read_json(REGULATIONS_CATALOG).get("regulations", [])
     if regulation_ids:
         catalog = [r for r in catalog if r["regulation_id"] in regulation_ids]
@@ -650,6 +703,16 @@ def fetch_regulations(
     report = _build_report(results)
     _write_json(FETCH_REPORT, report)
     return results, report
+
+
+def _report_output_path(path: str) -> str:
+    if not path:
+        return ""
+    p = Path(path)
+    try:
+        return p.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path
 
 
 def _build_report(results: List[FetchResult]) -> Dict[str, Any]:
@@ -668,7 +731,7 @@ def _build_report(results: List[FetchResult]) -> Dict[str, Any]:
                 "target_type": r.target_type,
                 "source_url": r.source_url,
                 "status": r.status,
-                "output_path": r.output_path,
+                "output_path": _report_output_path(r.output_path),
                 "message": r.message,
                 "bytes_written": r.bytes_written,
                 "source_hash": r.source_hash,

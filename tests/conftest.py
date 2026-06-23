@@ -1,11 +1,24 @@
 """Pytest defaults — skip heavy embedding models and live LLM in test runs."""
 
+import copy
 import os
 
 import pytest
 
 os.environ.setdefault("EMBEDDING_FAST_MODE", "1")
 os.environ.setdefault("LLM_ENABLED", "false")
+
+from runtime.tools import document_data as _document_data
+
+_ORIGINAL_DOCUMENT_STORE = copy.deepcopy(_document_data.DOCUMENT_STORE)
+
+
+@pytest.fixture(autouse=True)
+def _reset_document_store():
+    """Restore built-in document fixtures; orchestrator tests may replace them per run."""
+    _document_data.DOCUMENT_STORE.clear()
+    _document_data.DOCUMENT_STORE.extend(copy.deepcopy(_ORIGINAL_DOCUMENT_STORE))
+    yield
 
 
 @pytest.fixture(autouse=True)

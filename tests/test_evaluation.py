@@ -191,15 +191,20 @@ class TestHallucinationDetector:
     def test_unsupported_claim_detected(self):
         """7.3: unsupported claims must be detected."""
         tc = TraceCapture()
-        state = {"answer":{"text":"e生保覆盖太空旅行","citations":[{"ref":"c1"}]}}
-        events = [{"event_type":"EVIDENCE_FOUND","payload":{"evidence":[
-            {"chunk_id":"c1","content":"e生保保障恶性肿瘤"}
+        state = {"answer": {"text": "e生保免赔额为零", "citations": [{"ref": "c1"}]}}
+        events = [{"event_type": "EVIDENCE_FOUND", "payload": {"evidence": [
+            {"chunk_id": "c1", "content": "e生保保障恶性肿瘤"},
         ]}}]
-        trace = tc.capture("s1","q",events,state,0)
+        trace = tc.capture("s1", "q", events, state, 0)
         hd = HallucinationDetector()
         r = hd.detect(trace)
-        # Should detect some mismatch
-        assert r.hallucination_score >= 0
+        assert r.hallucination_score > 0
+        assert any(v.violation_type == "unsupported_claim" for v in r.violations)
+
+    def test_extract_entities_insurance_terms(self):
+        entities = HallucinationDetector._extract_entities("免赔额1万元，保证续保20年")
+        assert "免赔额" in entities
+        assert "保证续保" in entities
 
     def test_missing_evidence_detected(self):
         """7.3: zero evidence must trigger hallucination."""

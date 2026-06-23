@@ -1,11 +1,14 @@
 """Multi-Agent Runtime — AgentBus + 5 specialized agents."""
 
 from __future__ import annotations
+
+import threading
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
+
 
 class AgentStatus(str, Enum):
     IDLE = "idle"
@@ -13,6 +16,7 @@ class AgentStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     DEGRADED = "degraded"
+
 
 @dataclass
 class AgentMessage:
@@ -22,8 +26,17 @@ class AgentMessage:
     msg_type: str
     payload: Dict[str, Any] = field(default_factory=dict)
     trace_id: str = ""
-    def to_dict(self): return {"msg_id":self.msg_id,"sender":self.sender,
-        "recipient":self.recipient,"msg_type":self.msg_type,"payload":self.payload,"trace_id":self.trace_id}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "msg_id": self.msg_id,
+            "sender": self.sender,
+            "recipient": self.recipient,
+            "msg_type": self.msg_type,
+            "payload": self.payload,
+            "trace_id": self.trace_id,
+        }
+
 
 class BaseAgent(ABC):
     def __init__(self, name: str):
@@ -31,10 +44,45 @@ class BaseAgent(ABC):
         self.status = AgentStatus.IDLE
         self.execution_count = 0
         self.failure_count = 0
+        self._stats_lock = threading.Lock()
+
     @abstractmethod
-    def handle(self, msg: AgentMessage, ctx: "AgentContext") -> AgentMessage: ...
-    def status_dict(self): return {"name":self.name,"status":self.status.value,
-        "executions":self.execution_count,"failures":self.failure_count}
+    def handle(self, msg: AgentMessage, ctx: "AgentContext") -> AgentMessage:
+        ...
+
+    def _set_ctx_status(self, ctx: Optional["AgentContext"], status: AgentStatus) -> None:
+        with self._stats_lock:
+            self.status = status
+        if ctx is not None:
+            ctx.agent_statuses[self.name] = status
+
+    def _record_success(self, ctx: Optional["AgentContext"]) -> None:
+        with self._stats_lock:
+            self.execution_count += 1
+            self.status = AgentStatus.COMPLETED
+        if ctx is not None:
+            ctx.agent_statuses[self.name] = AgentStatus.COMPLETED
+
+    def _record_failure(
+        self,
+        ctx: Optional["AgentContext"],
+        status: AgentStatus = AgentStatus.FAILED,
+    ) -> None:
+        with self._stats_lock:
+            self.failure_count += 1
+            self.status = status
+        if ctx is not None:
+            ctx.agent_statuses[self.name] = status
+
+    def status_dict(self) -> Dict[str, Any]:
+        with self._stats_lock:
+            return {
+                "name": self.name,
+                "status": self.status.value,
+                "executions": self.execution_count,
+                "failures": self.failure_count,
+            }
+
 
 @dataclass
 class AgentContext:
@@ -60,10 +108,19 @@ class AgentContext:
     process_result: Dict[str, Any] = field(default_factory=dict)
     rule_evaluation: Dict[str, Any] = field(default_factory=dict)
     retrieval_weights: Dict[str, float] = field(default_factory=dict)
-    def to_dict(self): return {"session_id":self.session_id,"query":self.query,
-        "trace_id":self.trace_id,"intent":self.intent,"plan":self.plan,
-        "execution_graph":self.execution_graph,"failure_recovery_path":self.failure_recovery_path,
-        "degraded_mode":self.degraded_mode}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "query": self.query,
+            "trace_id": self.trace_id,
+            "intent": self.intent,
+            "plan": self.plan,
+            "execution_graph": self.execution_graph,
+            "failure_recovery_path": self.failure_recovery_path,
+            "degraded_mode": self.degraded_mode,
+        }
+
 
 class AgentBus:
     MAX_LOG = 1000
@@ -71,17 +128,57 @@ class AgentBus:
     def __init__(self):
         self._agents: Dict[str, BaseAgent] = {}
         self._log: List[AgentMessage] = []
-    def register(self, a: BaseAgent):
-        self._agents[a.name] = a
-    def send(self, msg: AgentMessage, ctx: Optional["AgentContext"] = None) -> AgentMessage:
-        self._log.append(msg)
-        if len(self._log) > self.MAX_LOG:
-            self._log = self._log[-self.MAX_LOG:]
-        a = self._agents.get(msg.recipient)
-        if not a:
-            return AgentMessage(str(uuid.uuid4()),msg.recipient,msg.sender,"error",{"error":f"Agent not found: {msg.recipient}"})
-        return a.handle(msg, ctx)
-    def get_agent(self, n): return self._agents.get(n)
-    def list_agents(self): return list(self._agents.keys())
-    def agent_statuses(self): return {n:a.status_dict() for n,a in self._agents.items()}
-    def message_log(self): return [m.to_dict() for m in self._log]
+        self._lock = threading.Lock()
+
+    def register(self, agent: BaseAgent) -> None:
+        self._agents[agent.name] = agent
+
+    def send(self, msg: AgentMessage, ctx: Optional[AgentContext] = None) -> AgentMessage:
+        with self._lock:
+            self._log.append(msg)
+            if len(self._log) > self.MAX_LOG:
+                self._log = self._log[-self.MAX_LOG:]
+        agent = self._agents.get(msg.recipient)
+        if not agent:
+            return AgentMessage(
+                str(uuid.uuid4()),
+                msg.recipient,
+                msg.sender,
+                "error",
+                {"error": f"Agent not found: {msg.recipient}"},
+            )
+        return agent.handle(msg, ctx)
+
+    def get_agent(self, name: str) -> Optional[BaseAgent]:
+        return self._agents.get(name)
+
+    def list_agents(self) -> List[str]:
+        return list(self._agents.keys())
+
+    def agent_statuses(self) -> Dict[str, Dict[str, Any]]:
+        """Last-known agent stats (dashboard); may reflect latest concurrent turn."""
+        with self._lock:
+            return {name: agent.status_dict() for name, agent in self._agents.items()}
+
+    def agent_statuses_from_context(self, ctx: Optional[AgentContext]) -> Dict[str, Dict[str, Any]]:
+        """Per-turn agent statuses merged with cumulative execution counters."""
+        with self._lock:
+            result: Dict[str, Dict[str, Any]] = {}
+            for name, agent in self._agents.items():
+                if ctx and name in ctx.agent_statuses:
+                    st = ctx.agent_statuses[name]
+                    status_val = st.value if isinstance(st, AgentStatus) else str(st)
+                else:
+                    status_val = agent.status.value
+                sd = agent.status_dict()
+                result[name] = {
+                    "name": name,
+                    "status": status_val,
+                    "executions": sd["executions"],
+                    "failures": sd["failures"],
+                }
+            return result
+
+    def message_log(self) -> List[Dict[str, Any]]:
+        with self._lock:
+            return [m.to_dict() for m in self._log]

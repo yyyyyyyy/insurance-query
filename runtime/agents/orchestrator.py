@@ -48,6 +48,21 @@ from knowledge.ontology.graph import OntologyGraph
 from knowledge.retrieval.engine import HybridRetriever
 
 
+class _EventSequencer:
+    """Monotonic per-session event sequence allocator."""
+
+    def __init__(self, event_store: EventStore, session_id: str):
+        self._store = event_store
+        self._session_id = session_id
+        events = event_store.get_session_events(session_id)
+        self._next = (max(e.sequence_number for e in events) + 1) if events else 1
+
+    def append(self, factory, *args, **kwargs) -> None:
+        seq = self._next
+        self._next += 1
+        self._store.append(factory(self._session_id, seq, *args, **kwargs))
+
+
 class MultiAgentEngine:
     """Insurance Runtime Kernel v3 — unified decision runtime."""
 
@@ -87,12 +102,6 @@ class MultiAgentEngine:
         self._knowledge_lock = threading.Lock()
         self._rules: List[Dict[str, Any]] = []
 
-    def _next_seq(self, session_id: str) -> int:
-        events = self.event_store.get_session_events(session_id)
-        if not events:
-            return 1
-        return max(e.sequence_number for e in events) + 1
-
     def _acquire_session_lock(self, session_id: str):
         """Return the per-session lock if the store provides one, else None.
 
@@ -109,20 +118,17 @@ class MultiAgentEngine:
         self,
         ctx: AgentContext,
         session_id: str,
-        seq: int,
+        seq: _EventSequencer,
         recipient: str,
         msg_type: str,
         payload: Dict[str, Any],
         trace_id: str,
         *,
         emit_events: bool = True,
-    ) -> tuple:
+    ) -> AgentMessage:
         """Dispatch to an agent, optionally recording agent lifecycle events."""
         if emit_events:
-            seq += 1
-            self.event_store.append(agent_assigned_event(
-                session_id, seq, recipient, {"msg_type": msg_type},
-            ))
+            seq.append(agent_assigned_event, recipient, {"msg_type": msg_type})
 
         resp = self.bus.send(AgentMessage(
             str(uuid.uuid4()), "orchestrator", recipient, msg_type,
@@ -130,24 +136,25 @@ class MultiAgentEngine:
         ), ctx)
 
         agent = self.bus.get_agent(recipient)
-        if ctx and agent:
-            ctx.agent_statuses[recipient] = agent.status
+        turn_status = ctx.agent_statuses.get(recipient) if ctx else None
+        if turn_status is None and agent:
+            turn_status = agent.status
 
-        if emit_events and agent:
-            seq += 1
-            self.event_store.append(agent_completed_event(
-                session_id, seq, recipient,
-                {"msg_type": resp.msg_type, "status": agent.status.value},
-            ))
-            seq += 1
-            if agent.status == AgentStatus.FAILED:
+        if emit_events and agent and turn_status is not None:
+            status_val = turn_status.value if isinstance(turn_status, AgentStatus) else str(turn_status)
+            seq.append(
+                agent_completed_event,
+                recipient,
+                {"msg_type": resp.msg_type, "status": status_val},
+            )
+            if turn_status == AgentStatus.FAILED:
                 ctx.degraded_mode = True
-                self.event_store.append(system_degraded_event(
-                    session_id, seq, reason=f"agent:{recipient}:failed",
-                ))
-                seq += 1
+                seq.append(
+                    system_degraded_event,
+                    reason=f"agent:{recipient}:failed",
+                )
 
-        return resp, seq
+        return resp
 
     def _materialize_cache_hit_response(
         self,
@@ -165,74 +172,66 @@ class MultiAgentEngine:
         t0: float,
     ) -> Dict[str, Any]:
         """Append causal replay events for cache hit (I1) without re-running pipeline."""
-        seq = self._next_seq(session_id)
+        seq = _EventSequencer(self.event_store, session_id)
 
-        self.event_store.append(user_query_event(session_id, seq, query_text))
-        seq += 1
-        self.event_store.append(memory_updated_event(
-            session_id, seq, action="read",
+        seq.append(user_query_event, query_text)
+        seq.append(
+            memory_updated_event,
+            action="read",
             facts=memory_context.get("facts", {}),
             is_follow_up=memory_resolution.get("is_follow_up", False),
-        ))
-        seq += 1
+        )
         latency_ms = round((time.perf_counter() - t0) * 1000, 1)
-        self.event_store.append(cache_hit_event(
-            session_id, seq,
+        seq.append(
+            cache_hit_event,
             store="query",
             key=qkey,
             source_trace_id=source_trace_id,
             source_session_id=cached_val.get("session_id", ""),
             replay_projection=True,
             latency_ms=latency_ms,
-        ))
+        )
 
         answer = dict(cached_val.get("answer") or {})
         canonical = answer.get("canonical_evidence") or {}
         accepted_ids = list(answer.get("accepted_evidence_ids") or canonical.get("accepted_ids") or [])
 
         if accepted_ids or canonical.get("items"):
-            seq += 1
-            self.event_store.append(evidence_selected_event(
-                session_id, seq,
+            seq.append(
+                evidence_selected_event,
                 accepted_ids=accepted_ids,
                 rejected_ids=list(canonical.get("rejected_ids") or []),
                 threshold=self.tuner.get_evidence_threshold(),
                 snapshot=list(canonical.get("items") or []),
                 from_cache=True,
-            ))
+            )
 
-        seq += 1
-        self.event_store.append(answer_generated_event(
-            session_id, seq,
+        seq.append(
+            answer_generated_event,
             answer=answer.get("text", ""),
             citations=answer.get("citations", []),
             confidence=answer.get("confidence"),
             from_cache=True,
-        ))
+        )
 
         evaluation = cached_val.get("evaluation") or {}
         if evaluation:
-            seq += 1
-            self.event_store.append(evaluation_completed_event(
-                session_id, seq,
+            seq.append(
+                evaluation_completed_event,
                 total_score=float(evaluation.get("total_score", 0)),
                 dimensions=evaluation.get("dimensions", {}),
                 diagnosis=evaluation.get("diagnosis", ""),
                 from_cache=True,
-            ))
-            seq += 1
-            self.event_store.append(hallucination_detected_event(
-                session_id, seq,
+            )
+            seq.append(
+                hallucination_detected_event,
                 hallucination_score=float(evaluation.get("hallucination_score", 0)),
                 severity=evaluation.get("severity", "NONE"),
                 violations=evaluation.get("violations", []),
                 from_cache=True,
-            ))
+            )
 
-        seq += 1
-        self.event_store.append(trace_captured_event(
-            session_id, seq, trace_id=trace_id, from_cache=True,
-        ))
+        seq.append(trace_captured_event, trace_id=trace_id, from_cache=True)
 
         result = {**cached_val}
         result.update({
@@ -358,19 +357,10 @@ class MultiAgentEngine:
             batch_ctx = session_lock
 
         with batch_ctx:
-            self.event_store.begin_batch()
-            try:
-                result = self._run_query(
+            with self.event_store.transaction():
+                return self._run_query(
                     query_text, session_id, trace_id, t0,
                 )
-            except Exception:
-                # On failure, roll back any half-written events so the
-                # event store never persists an incomplete query turn
-                # (event-sourcing atomicity: all events or none).
-                self.event_store.rollback_batch()
-                raise
-            self.event_store.commit_batch()
-            return result
 
     def _run_query(
         self,
@@ -379,8 +369,6 @@ class MultiAgentEngine:
         trace_id: str,
         t0: float,
     ) -> Dict[str, Any]:
-        seq = 0
-
         # --- Memory resolve (before cache — session-aware key) ---
         memory_resolution = resolve_query(self.working_memory, session_id, query_text)
         resolved_query = memory_resolution["resolved_query"]
@@ -414,21 +402,17 @@ class MultiAgentEngine:
                 t0=t0,
             )
 
-        seq = self._next_seq(session_id)
-        self.event_store.append(user_query_event(session_id, seq, query_text))
+        seq = _EventSequencer(self.event_store, session_id)
+        seq.append(user_query_event, query_text)
 
-        # MEMORY_UPDATED (read)
-        seq += 1
-        self.event_store.append(memory_updated_event(
-            session_id, seq, action="read",
+        seq.append(
+            memory_updated_event,
+            action="read",
             facts=memory_context.get("facts", {}),
             is_follow_up=memory_resolution.get("is_follow_up", False),
-        ))
+        )
 
-        seq += 1
-        self.event_store.append(cache_miss_event(
-            session_id, seq, store="query", key=qkey,
-        ))
+        seq.append(cache_miss_event, store="query", key=qkey)
 
         self.bus.send(AgentMessage(
             str(uuid.uuid4()), "orchestrator", "supervisor", "control",
@@ -436,7 +420,7 @@ class MultiAgentEngine:
         ), ctx)
 
         # --- Intent + Plan (with memory) ---
-        resp, seq = self._send_agent(
+        resp = self._send_agent(
             ctx, session_id, seq, "planner", "task",
             {
                 "query": resolved_query,
@@ -453,18 +437,17 @@ class MultiAgentEngine:
             "agent": "planner", "intent": intent.get("intent"), "plan_len": len(plan),
         })
 
-        seq += 1
-        self.event_store.append(intent_classified_event(
-            session_id, seq,
+        seq.append(
+            intent_classified_event,
             intent=intent.get("intent", "general_inquiry"),
             confidence=intent.get("confidence", 0.5),
             entities=intent.get("entities", []),
-        ))
-        seq += 1
-        self.event_store.append(plan_created_event(
-            session_id, seq, plan=plan,
+        )
+        seq.append(
+            plan_created_event,
+            plan=plan,
             reasoning=f"Plan for intent: {intent.get('intent', 'general_inquiry')}",
-        ))
+        )
 
         # --- Retrieval (tuner-weighted) ---
         retrieval_weights = self.tuner.get_retrieval_params()
@@ -476,13 +459,12 @@ class MultiAgentEngine:
         ctx.ontology_context = onto_matches
 
         if onto_matches:
-            seq += 1
-            self.event_store.append(ontology_expanded_event(
-                session_id, seq,
+            seq.append(
+                ontology_expanded_event,
                 seed_entities=onto_matches, expanded_entities=onto_matches,
-            ))
+            )
 
-        resp, seq = self._send_agent(
+        resp = self._send_agent(
             ctx, session_id, seq, "retrieval", "task",
             {
                 "query": retrieval_query,
@@ -497,19 +479,19 @@ class MultiAgentEngine:
         ctx.retrieval_results = retrieval_chunks
         ctx.execution_graph.append({"agent": "retrieval", "chunks": len(retrieval_chunks)})
 
-        seq += 1
-        self.event_store.append(retrieval_executed_event(
-            session_id, seq, query=retrieval_query,
+        seq.append(
+            retrieval_executed_event,
+            query=retrieval_query,
             result_count=len(retrieval_chunks),
             ontology_used=len(onto_matches) > 0,
             weights=retrieval_weights,
             base_query=resolved_query,
             decision_trace=decision_trace,
             chunks=retrieval_chunks[:10],
-        ))
+        )
 
         # --- Tool execution ---
-        resp, seq = self._send_agent(
+        resp = self._send_agent(
             ctx, session_id, seq, "tool", "task",
             {
                 "plan": plan, "query": resolved_query,
@@ -527,11 +509,11 @@ class MultiAgentEngine:
         for tname, ar_dict in agent_results.items():
             tools_attempted.append(tname)
             status = ar_dict.get("status", "")
-            seq += 1
-            self.event_store.append(tool_called_event(
-                session_id, seq, tool_name=tname,
+            seq.append(
+                tool_called_event,
+                tool_name=tname,
                 input_params=ar_dict.get("metadata", {}),
-            ))
+            )
             duration = 0.0
             fact_keys: List[str] = []
             if status == "success" and ar_dict.get("result"):
@@ -540,29 +522,26 @@ class MultiAgentEngine:
                 evidence = r.get("evidence", [])
                 all_evidence.extend(evidence)
                 duration = r.get("duration_ms", 0)
-                seq += 1
-                self.event_store.append(evidence_found_event(
-                    session_id, seq, tool_name=tname,
+                seq.append(
+                    evidence_found_event,
+                    tool_name=tname,
                     evidence=evidence, output=r.get("data", {}),
                     duration_ms=duration,
-                ))
+                )
             if tname in tool_memory_facts:
                 fact_keys.append(tname)
-            seq += 1
-            self.event_store.append(tool_executed_event(
-                session_id, seq, tool_name=tname, status=status,
+            seq.append(
+                tool_executed_event,
+                tool_name=tname, status=status,
                 duration_ms=duration, fact_keys=fact_keys,
-            ))
+            )
 
         ctx.tool_results = tool_data
         ctx.evidence = all_evidence
 
         # MEMORY_UPDATED (write facts from tools)
         if ctx.memory_facts:
-            seq += 1
-            self.event_store.append(memory_updated_event(
-                session_id, seq, action="write", facts=ctx.memory_facts,
-            ))
+            seq.append(memory_updated_event, action="write", facts=ctx.memory_facts)
 
         # --- Process execution ---
         intent_type = intent.get("intent", "general_inquiry")
@@ -580,14 +559,13 @@ class MultiAgentEngine:
         )
         if process_result:
             ctx.process_result = process_result.to_dict()
-            seq += 1
-            self.event_store.append(process_executed_event(
-                session_id, seq,
+            seq.append(
+                process_executed_event,
                 process_name=process_result.process_name,
                 path=process_result.path,
                 terminal_state=process_result.terminal_state,
                 outcome=process_result.outcome,
-            ))
+            )
             if self.working_memory:
                 self.working_memory.set_active_process(session_id, process_result.process_name)
 
@@ -595,14 +573,13 @@ class MultiAgentEngine:
         rule_eval = preliminary_rules
         ctx.rule_evaluation = rule_eval.to_dict()
         matched = [d.to_dict() for d in rule_eval.decisions if d.matched][:5]
-        seq += 1
-        self.event_store.append(rule_evaluated_event(
-            session_id, seq,
+        seq.append(
+            rule_evaluated_event,
             rules_evaluated=rule_eval.rules_evaluated,
             rules_matched=rule_eval.rules_matched,
             top_decisions=matched,
             summary=rule_eval.summary,
-        ))
+        )
 
         # --- Canonical evidence selection ---
         allow_legacy = (
@@ -639,14 +616,13 @@ class MultiAgentEngine:
             accepted_evidence = ces.to_evidence_dicts(accepted_only=True)
             ces.mark_used_in_answer(accepted_ids)
 
-            seq += 1
-            self.event_store.append(evidence_selected_event(
-                session_id, seq,
+            seq.append(
+                evidence_selected_event,
                 accepted_ids=accepted_ids,
                 rejected_ids=rejected_ids,
                 threshold=evidence_threshold,
                 snapshot=[i.to_dict() for i in ces.all_items()],
-            ))
+            )
         else:
             accepted_evidence = list(all_evidence)
             accepted_ids = []
@@ -680,19 +656,19 @@ class MultiAgentEngine:
             answer["process_result"] = process_result.to_dict()
         ctx.answer = answer
 
-        seq += 1
-        self.event_store.append(answer_generated_event(
-            session_id, seq, answer=answer["text"],
+        seq.append(
+            answer_generated_event,
+            answer=answer["text"],
             citations=answer.get("citations", []),
             confidence=answer.get("confidence"),
             accepted_evidence_ids=accepted_ids,
             used_in_answer_ids=accepted_ids,
             canonical_evidence_snapshot=ces.to_event_payload() if use_canonical else {},
-        ))
+        )
 
         # --- Evaluation (event_store truth only) ---
         events_for_eval = [e.to_dict() for e in self.event_store.get_session_events(session_id)]
-        resp, seq = self._send_agent(
+        resp = self._send_agent(
             ctx, session_id, seq, "evaluation", "task",
             {
                 "session_id": session_id,
@@ -704,42 +680,35 @@ class MultiAgentEngine:
         ctx.evaluation = resp.payload
         eval_result = ctx.evaluation
 
-        seq += 1
-        self.event_store.append(evaluation_completed_event(
-            session_id, seq,
+        seq.append(
+            evaluation_completed_event,
             total_score=float(eval_result.get("total_score", 0)),
             dimensions=eval_result.get("dimensions", {}),
             diagnosis=eval_result.get("diagnosis", ""),
-        ))
-        seq += 1
-        self.event_store.append(hallucination_detected_event(
-            session_id, seq,
+        )
+        seq.append(
+            hallucination_detected_event,
             hallucination_score=float(eval_result.get("hallucination_score", 0)),
             severity=eval_result.get("severity", "NONE"),
             violations=eval_result.get("violations", []),
-        ))
+        )
         feedback_signals = eval_result.get("feedback", [])
         if feedback_signals:
-            seq += 1
-            self.event_store.append(system_feedback_generated_event(
-                session_id, seq, signals=feedback_signals,
-            ))
+            seq.append(system_feedback_generated_event, signals=feedback_signals)
 
         # --- SelfTuner闭环 ---
         tuning_config = self.tuner.apply_evaluation(eval_result, feedback_signals)
-        seq += 1
-        self.event_store.append(tuning_applied_event(
-            session_id, seq,
+        seq.append(
+            tuning_applied_event,
             weights={
                 "bm25_weight": tuning_config.bm25_weight,
                 "vector_weight": tuning_config.vector_weight,
                 "ontology_weight": tuning_config.ontology_weight,
             },
             reason=tuning_config.last_adjustment,
-        ))
+        )
 
-        seq += 1
-        self.event_store.append(trace_captured_event(session_id, seq, trace_id=trace_id))
+        seq.append(trace_captured_event, trace_id=trace_id)
 
         self.bus.send(AgentMessage(
             str(uuid.uuid4()), "orchestrator", "supervisor", "control",
@@ -757,7 +726,7 @@ class MultiAgentEngine:
             "answer": answer,
             "evaluation": ctx.evaluation,
             "execution_graph": ctx.execution_graph,
-            "agent_statuses": self.bus.agent_statuses(),
+            "agent_statuses": self.bus.agent_statuses_from_context(ctx),
             "message_log": self.bus.message_log(),
             "event_trace": [e.to_dict() for e in self.event_store.get_session_events(session_id)],
             "memory_context": memory_context,

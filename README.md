@@ -45,6 +45,7 @@ curl -X POST http://localhost:8000/query \
 - **I2** — 证据：`candidate → accepted → used_in_answer`
 - **I3** — Tool 必须执行，Retrieval 不替代执行
 - **I4** — 事件 append-only
+- **并发** — 同 session 串行；EventStore 单 turn 事务原子提交
 
 ## 测试
 
@@ -53,7 +54,7 @@ set LLM_ENABLED=false
 pytest tests/ -q
 ```
 
-基线 282+ passed，含 `tests/test_closed_loop.py` 闭环门禁。
+基线 331+ passed，含 `tests/test_closed_loop.py` 闭环门禁。
 
 ## 仓库结构（摘要）
 

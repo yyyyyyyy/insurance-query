@@ -179,6 +179,13 @@ def init_manifest_from_catalog(
     return entries
 
 
+def _format_error(exc: BaseException) -> str:
+    msg = str(exc).strip()
+    if msg:
+        return f"{type(exc).__name__}: {msg}"
+    return type(exc).__name__
+
+
 def _resolve_file_path(entry: ManifestEntry, base_dir: Optional[Path] = None) -> Path:
     root = (base_dir or POLICY_DOCS_DIR).resolve()
     path = (root / entry.file).resolve()
@@ -188,6 +195,12 @@ def _resolve_file_path(entry: ManifestEntry, base_dir: Optional[Path] = None) ->
         raise ValueError(f"Path traversal rejected for manifest file: {entry.file}") from exc
     if path.exists():
         return path
+    if base_dir is not None and entry.regulation_id:
+        docs_dir = (base_dir / "documents").resolve()
+        if docs_dir.is_dir():
+            for candidate in sorted(docs_dir.glob(f"{entry.regulation_id}_*")):
+                if candidate.is_file() and candidate.suffix.lower() in (".txt", ".pdf"):
+                    return candidate.resolve()
     if base_dir is None:
         sample_path = POLICY_DOCS_DIR / "samples" / entry.file
         if sample_path.exists():
@@ -298,7 +311,7 @@ def ingest_manifest_entry(
         )
     except Exception as exc:
         logger.exception("Failed to ingest %s", entry.file)
-        return IngestResult(entry=entry, status="error", error=str(exc))
+        return IngestResult(entry=entry, status="error", error=_format_error(exc))
 
 
 def load_ingested_bundle(path: Optional[Path] = None) -> Dict[str, Any]:

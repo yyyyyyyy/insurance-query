@@ -12,7 +12,7 @@ from knowledge.ingestion.policy_ingest import (
     load_ingested_documents,
     merge_documents,
 )
-from knowledge.ingestion.pipeline import chunk_document
+from knowledge.ingestion.pipeline import _split_long_text, chunk_document
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,6 +31,13 @@ class TestPolicyIngest:
         chunks = chunk_document(SAMPLE_CLAUSE_TEXT, "DOC_TEST")
         assert len(chunks) >= 2
         assert any("等待期" in c.content for c in chunks)
+
+    def test_split_long_text_whitespace_does_not_loop(self):
+        text = " " * 2000 + "正文。" + " " * 2000
+        chunks = _split_long_text(text, chunk_size=500, overlap=50)
+        assert chunks
+        assert any("正文" in c for c in chunks)
+        assert len(chunks) < 50
 
     def test_prune_preserves_unscanned_scope(self, monkeypatch):
         import knowledge.ingestion.policy_ingest as pi

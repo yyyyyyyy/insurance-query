@@ -1,8 +1,10 @@
 """5 Specialized Agents: Planner, Retrieval, Tool, Evaluation, Supervisor."""
 
 from __future__ import annotations
+
 import uuid
 from typing import Any, Dict
+
 from runtime.agents.bus import BaseAgent, AgentMessage, AgentContext, AgentStatus
 from runtime.llm.plugin import classify_intent_auto, generate_plan_auto
 from runtime.memory.resolver import merge_entities_into_intent
@@ -10,16 +12,15 @@ from runtime.memory.facts import extract_facts_from_tool, merge_facts
 from runtime.tools.registry import ToolDispatcher, create_default_registry
 from runtime.execution.executor import create_default_executor
 
-# ============================================================
-# 1. PlannerAgent
-# ============================================================
 
 class PlannerAgent(BaseAgent):
-    """Decomposes query, classifies intent, builds tool execution graph.
-    Uses working memory context to enrich intent and plan."""
-    def __init__(self): super().__init__("planner")
+    """Decomposes query, classifies intent, builds tool execution graph."""
+
+    def __init__(self):
+        super().__init__("planner")
+
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
-        self.status = AgentStatus.RUNNING
+        self._set_ctx_status(ctx, AgentStatus.RUNNING)
         try:
             query = msg.payload.get("query", ctx.query if ctx else "")
             memory_context = msg.payload.get("memory_context", {})
@@ -29,7 +30,6 @@ class PlannerAgent(BaseAgent):
             if injected:
                 intent = merge_entities_into_intent(intent, injected)
 
-            # Enrich plan from memory product IDs
             if memory_context.get("previous_product_ids"):
                 for ent in memory_context["previous_product_ids"]:
                     injected.append({"type": "product_id", "value": ent, "source": "memory"})
@@ -37,7 +37,6 @@ class PlannerAgent(BaseAgent):
 
             plan = generate_plan_auto(query, intent)
 
-            # Apply memory product IDs to plan steps
             prev_ids = memory_context.get("previous_product_ids", [])
             if not prev_ids:
                 facts = memory_context.get("facts", {})
@@ -55,34 +54,42 @@ class PlannerAgent(BaseAgent):
                     if "product_id" in params and prev_ids:
                         params["product_id"] = prev_ids[0]
 
-            self.execution_count += 1
-            self.status = AgentStatus.COMPLETED
-            return AgentMessage(str(uuid.uuid4()),"planner","orchestrator","result",
-                {"intent":intent,"plan":plan},trace_id=msg.trace_id)
+            self._record_success(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "planner", "orchestrator", "result",
+                {"intent": intent, "plan": plan},
+                trace_id=msg.trace_id,
+            )
         except Exception as e:
-            self.failure_count += 1
-            self.status = AgentStatus.FAILED
-            return AgentMessage(str(uuid.uuid4()),"planner","orchestrator","error",
-                {"error":str(e),"fallback_plan":generate_plan_auto(msg.payload.get("query",""),{"intent":"general_inquiry","confidence":0.5,"entities":[]})},trace_id=msg.trace_id)
+            self._record_failure(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "planner", "orchestrator", "error",
+                {
+                    "error": str(e),
+                    "fallback_plan": generate_plan_auto(
+                        msg.payload.get("query", ""),
+                        {"intent": "general_inquiry", "confidence": 0.5, "entities": []},
+                    ),
+                },
+                trace_id=msg.trace_id,
+            )
 
-# ============================================================
-# 2. RetrievalAgent
-# ============================================================
 
 class RetrievalAgent(BaseAgent):
     """Executes hybrid retrieval with tuner-weighted scoring."""
+
     def __init__(self, retriever=None):
         super().__init__("retrieval")
         self.retriever = retriever
+
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
-        self.status = AgentStatus.RUNNING
+        self._set_ctx_status(ctx, AgentStatus.RUNNING)
         try:
-            query = msg.payload.get("query","")
-            onto_ctx = list(msg.payload.get("ontology_context",[]))
+            query = msg.payload.get("query", "")
+            onto_ctx = list(msg.payload.get("ontology_context", []))
             memory_context = msg.payload.get("memory_context", {})
             retrieval_weights = msg.payload.get("retrieval_weights", {})
 
-            # Merge memory entities into ontology context
             for prod in memory_context.get("previous_products", []):
                 if prod and prod not in onto_ctx:
                     onto_ctx.append(prod)
@@ -121,48 +128,55 @@ class RetrievalAgent(BaseAgent):
                     })
             else:
                 chunks = []
-            self.execution_count += 1
-            self.status = AgentStatus.COMPLETED
-            return AgentMessage(str(uuid.uuid4()),"retrieval","orchestrator","result",
-                {"chunks":chunks,"total":len(chunks),"weights_used":retrieval_weights,
-                 "decision_trace": decision_trace},trace_id=msg.trace_id)
-        except Exception as e:
-            self.failure_count += 1
-            self.status = AgentStatus.FAILED
-            return AgentMessage(str(uuid.uuid4()),"retrieval","orchestrator","error",
-                {"error":str(e),"chunks":[]},trace_id=msg.trace_id)
 
-# ============================================================
-# 3. ToolAgent
-# ============================================================
+            self._record_success(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "retrieval", "orchestrator", "result",
+                {
+                    "chunks": chunks,
+                    "total": len(chunks),
+                    "weights_used": retrieval_weights,
+                    "decision_trace": decision_trace,
+                },
+                trace_id=msg.trace_id,
+            )
+        except Exception as e:
+            self._record_failure(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "retrieval", "orchestrator", "error",
+                {"error": str(e), "chunks": []},
+                trace_id=msg.trace_id,
+            )
+
 
 class ToolAgent(BaseAgent):
-    """Executes tool chains deterministically via dispatcher + async executor.
-    Writes memory facts on successful tool execution."""
+    """Executes tool chains via dispatcher + async executor."""
+
     def __init__(self, dispatcher=None, async_exec=None):
         super().__init__("tool")
         self.dispatcher = dispatcher or ToolDispatcher(create_default_registry())
         self.async_exec = async_exec or create_default_executor()
+
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
-        self.status = AgentStatus.RUNNING
+        self._set_ctx_status(ctx, AgentStatus.RUNNING)
         try:
-            plan = msg.payload.get("plan",[])
+            plan = msg.payload.get("plan", [])
             hints = msg.payload.get("retrieval_context", [])
             tool_results = {}
             memory_facts_written: Dict[str, Any] = {}
             parallel_calls = []
             for step in plan:
-                tool_name = step.get("tool_name","")
-                params = dict(step.get("input_params",{}))
-                params["query"] = msg.payload.get("query","")
+                tool_name = step.get("tool_name", "")
+                params = dict(step.get("input_params", {}))
+                params["query"] = msg.payload.get("query", "")
                 if hints:
                     params["_retrieval_hints"] = hints
                 parallel_calls.append((tool_name, params))
 
-            async_results = self.async_exec.execute_parallel(
-                parallel_calls,
-                self.dispatcher.dispatch,
-            ) if parallel_calls else []
+            async_results = (
+                self.async_exec.execute_parallel(parallel_calls, self.dispatcher.dispatch)
+                if parallel_calls else []
+            )
 
             for async_result in async_results:
                 tool_name = async_result.tool_name
@@ -174,27 +188,36 @@ class ToolAgent(BaseAgent):
                     for f in facts:
                         memory_facts_written[f.key] = f.to_dict()
                 if not result.success:
-                    ctx.failure_recovery_path.append(f"tool:{tool_name}:{result.status.value}")
-            self.execution_count += 1
-            self.status = AgentStatus.COMPLETED
-            return AgentMessage(str(uuid.uuid4()),"tool","orchestrator","result",
-                {"results":{k:v.to_dict() for k,v in tool_results.items()},
-                 "memory_facts": memory_facts_written},trace_id=msg.trace_id)
-        except Exception as e:
-            self.failure_count += 1
-            self.status = AgentStatus.FAILED
-            return AgentMessage(str(uuid.uuid4()),"tool","orchestrator","error",
-                {"error":str(e),"results":{}},trace_id=msg.trace_id)
+                    ctx.failure_recovery_path.append(
+                        f"tool:{tool_name}:{result.status.value}",
+                    )
 
-# ============================================================
-# 4. EvaluationAgent
-# ============================================================
+            self._record_success(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "tool", "orchestrator", "result",
+                {
+                    "results": {k: v.to_dict() for k, v in tool_results.items()},
+                    "memory_facts": memory_facts_written,
+                },
+                trace_id=msg.trace_id,
+            )
+        except Exception as e:
+            self._record_failure(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "tool", "orchestrator", "error",
+                {"error": str(e), "results": {}},
+                trace_id=msg.trace_id,
+            )
+
 
 class EvaluationAgent(BaseAgent):
-    """Runs evaluation pipeline from event_store truth (no synthetic trace)."""
-    def __init__(self): super().__init__("evaluation")
+    """Runs evaluation pipeline from event_store truth."""
+
+    def __init__(self):
+        super().__init__("evaluation")
+
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
-        self.status = AgentStatus.RUNNING
+        self._set_ctx_status(ctx, AgentStatus.RUNNING)
         try:
             from evaluation.engine.scorer import EvaluationEngine
             from evaluation.hallucination.detector import HallucinationDetector
@@ -203,9 +226,12 @@ class EvaluationAgent(BaseAgent):
 
             events = msg.payload.get("events")
             if not events:
-                self.status = AgentStatus.DEGRADED
-                return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","result",
-                    {"total_score":0,"diagnosis":"No event_store events"},trace_id=msg.trace_id)
+                self._record_failure(ctx, AgentStatus.DEGRADED)
+                return AgentMessage(
+                    str(uuid.uuid4()), "evaluation", "orchestrator", "result",
+                    {"total_score": 0, "diagnosis": "No event_store events"},
+                    trace_id=msg.trace_id,
+                )
 
             tc = TraceCapture()
             sid = ctx.session_id if ctx else msg.payload.get("session_id", "unknown")
@@ -217,31 +243,45 @@ class EvaluationAgent(BaseAgent):
             er = ee.evaluate(trace)
             hal = hd.detect(trace)
             fb = fl.generate(er, hal)
-            self.execution_count += 1
-            self.status = AgentStatus.COMPLETED
-            return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","result",{
-                "total_score":er.total_score,"dimensions":{k:v.score for k,v in er.dimensions.items()},
-                "hallucination_score":hal.hallucination_score,"severity":hal.severity,
-                "violations":[{"type":v.violation_type,"description":v.description,
-                               "severity":v.severity} for v in hal.violations],
-                "diagnosis":er.diagnosis,"feedback":[f.to_dict() for f in fb]
-            },trace_id=msg.trace_id)
+            self._record_success(ctx)
+            return AgentMessage(
+                str(uuid.uuid4()), "evaluation", "orchestrator", "result",
+                {
+                    "total_score": er.total_score,
+                    "dimensions": {k: v.score for k, v in er.dimensions.items()},
+                    "hallucination_score": hal.hallucination_score,
+                    "severity": hal.severity,
+                    "violations": [
+                        {
+                            "type": v.violation_type,
+                            "description": v.description,
+                            "severity": v.severity,
+                        }
+                        for v in hal.violations
+                    ],
+                    "diagnosis": er.diagnosis,
+                    "feedback": [f.to_dict() for f in fb],
+                },
+                trace_id=msg.trace_id,
+            )
         except Exception as e:
-            self.failure_count += 1
-            self.status = AgentStatus.DEGRADED
-            return AgentMessage(str(uuid.uuid4()),"evaluation","orchestrator","error",
-                {"error":str(e),"degraded":True},trace_id=msg.trace_id)
+            self._record_failure(ctx, AgentStatus.DEGRADED)
+            return AgentMessage(
+                str(uuid.uuid4()), "evaluation", "orchestrator", "error",
+                {"error": str(e), "degraded": True},
+                trace_id=msg.trace_id,
+            )
 
-# ============================================================
-# 5. SupervisorAgent
-# ============================================================
 
 class SupervisorAgent(BaseAgent):
-    """Monitors system behavior, handles failures, triggers re-planning."""
-    def __init__(self): super().__init__("supervisor")
+    """Monitors system behavior and handles failures."""
+
+    def __init__(self):
+        super().__init__("supervisor")
+
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
-        self.status = AgentStatus.RUNNING
-        health = {"overall":"healthy","issues":[]}
+        self._set_ctx_status(ctx, AgentStatus.RUNNING)
+        health = {"overall": "healthy", "issues": []}
         if ctx:
             for aname, astatus in ctx.agent_statuses.items():
                 if isinstance(astatus, AgentStatus) and astatus == AgentStatus.FAILED:
@@ -249,8 +289,9 @@ class SupervisorAgent(BaseAgent):
             health["degraded"] = ctx.degraded_mode
             if len(ctx.failure_recovery_path) > 2:
                 health["overall"] = "degrading"
-            self.execution_count += 1
-            self.status = AgentStatus.COMPLETED
-        return AgentMessage(str(uuid.uuid4()),"supervisor","orchestrator","result",
-            {"health":health,"recovery_actions":[]},
-            trace_id=msg.trace_id)
+            self._record_success(ctx)
+        return AgentMessage(
+            str(uuid.uuid4()), "supervisor", "orchestrator", "result",
+            {"health": health, "recovery_actions": []},
+            trace_id=msg.trace_id,
+        )

@@ -266,6 +266,26 @@ class TestHybridRetrieval:
         score = scorer.score("保证续保", 1)
         assert score > 0
 
+    def test_bm25_normalized_in_feature_contribution(self):
+        store = ChunkStore()
+        gen = EmbeddingGenerator(vector_dim=64)
+        texts = [
+            ("D1", "policy", "等待期30天免赔额1万元恶性肿瘤保障条款说明"),
+            ("D2", "policy", "保证续保20年犹豫期15天如实告知义务"),
+            ("D3", "regulation", "健康保险管理办法等待期不得超过180日"),
+        ]
+        for did, dtype, text in texts:
+            ingest_text_document(text, did, f"Doc {did}", dtype, store, gen)
+
+        hr = HybridRetriever(store, gen)
+        hr.fit()
+        results = hr.retrieve("等待期", top_k=3)
+        assert results
+        for _, _, fc in results:
+            assert "bm25_raw" in fc
+            assert "bm25_norm" in fc
+            assert 0.0 <= fc["bm25_norm"] <= 1.0
+
     def test_hybrid_retrieval_basic(self):
         store = ChunkStore()
         gen = EmbeddingGenerator(vector_dim=64)

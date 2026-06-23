@@ -206,17 +206,24 @@ def _split_long_text(text: str, chunk_size: int, overlap: int) -> List[str]:
     """Split a long text into overlapping chunks of approximately chunk_size characters."""
     chunks = []
     start = 0
-    while start < len(text):
-        end = min(start + chunk_size, len(text))
+    text_len = len(text)
+    step = max(1, chunk_size - overlap)
+    while start < text_len:
+        end = min(start + chunk_size, text_len)
         # Try to break at sentence boundary
-        if end < len(text):
+        if end < text_len:
             for sep in '。！？\n':
                 last_sep = text.rfind(sep, start, end)
                 if last_sep > start + chunk_size // 2:
                     end = last_sep + 1
                     break
-        chunks.append(text[start:end].strip())
-        start = end - overlap
+        piece = text[start:end].strip()
+        if piece:
+            chunks.append(piece)
+        next_start = end - overlap
+        if next_start <= start:
+            next_start = start + step
+        start = next_start
     return chunks
 
 
