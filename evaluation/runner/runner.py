@@ -47,6 +47,11 @@ class EvalRunner:
         passed = 0
         failed = 0
 
+        import os
+        threshold = float(os.environ.get("EVAL_PASS_THRESHOLD", "70"))
+        max_latency_ms = float(os.environ.get("EVAL_MAX_LATENCY_MS", "8000"))
+        allowed_severity = {"NONE", "LOW", "MEDIUM"}
+
         for sample in samples:
             try:
                 t0 = time.perf_counter()
@@ -67,8 +72,11 @@ class EvalRunner:
                 scores.append(eval_result.total_score)
                 latencies.append(latency)
 
-                ok = (eval_result.total_score >= 50 and
-                      hal_report.severity in ("NONE","LOW"))
+                ok = (
+                    eval_result.total_score >= threshold
+                    and hal_report.severity in allowed_severity
+                    and latency <= max_latency_ms
+                )
                 if ok:
                     passed += 1
                 else:

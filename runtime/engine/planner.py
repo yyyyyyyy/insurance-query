@@ -8,6 +8,7 @@ same interface contract.
 
 from __future__ import annotations
 
+import copy
 import re
 from typing import Any, Dict, List, Tuple
 
@@ -111,9 +112,9 @@ PLAN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
          "input_params": {"entity_type": "Product"}},
         {"step_id": 2, "tool_name": "attribute_extraction", "description": "提取产品核心属性",
          "input_params": {"attributes": ["coverage_limit", "premium", "exclusions"],
-                          "product_ids": ["P001", "P002"]}},
+                          "product_ids": []}},
         {"step_id": 3, "tool_name": "compare", "description": "结构化对比产品",
-         "input_params": {"product_ids": ["P001", "P002"],
+         "input_params": {"product_ids": [],
                           "dimensions": ["waiting_period", "deductible", "coverage_limit", "guaranteed_renewal"]}},
     ],
     "coverage_question": [
@@ -123,7 +124,7 @@ PLAN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
          "input_params": {"document_type": "policy_clause", "top_k": 3}},
         {"step_id": 3, "tool_name": "attribute_extraction", "description": "提取保障范围和限制",
          "input_params": {"attributes": ["coverage_limit", "critical_illness_limit", "outpatient_limit", "exclusions"],
-                          "product_ids": ["P001"]}},
+                          "product_ids": []}},
     ],
     "regulation_lookup": [
         {"step_id": 1, "tool_name": "regulation_search", "description": "检索相关法规",
@@ -138,7 +139,7 @@ PLAN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
          "input_params": {"top_k": 5}},
         {"step_id": 2, "tool_name": "attribute_extraction", "description": "提取价格和费率信息",
          "input_params": {"attributes": ["premium", "premium_reference"],
-                          "product_ids": ["P001", "P002"]}},
+                          "product_ids": []}},
     ],
     "claim_process": [
         {"step_id": 1, "tool_name": "document_search", "description": "检索理赔流程文档",
@@ -150,7 +151,7 @@ PLAN_TEMPLATES: Dict[str, List[Dict[str, Any]]] = {
         {"step_id": 1, "tool_name": "product_search", "description": "搜索符合条件的产品",
          "input_params": {"top_k": 5}},
         {"step_id": 2, "tool_name": "eligibility_check", "description": "检查投保资格",
-         "input_params": {"product_id": "P001", "age": 30}},
+         "input_params": {"product_id": "", "age": None}},
     ],
     "general_inquiry": [
         {"step_id": 1, "tool_name": "product_search", "description": "搜索相关信息",
@@ -169,5 +170,5 @@ def generate_plan(query_text: str, intent_result: Dict[str, Any]) -> List[Dict[s
     """
     intent_type = intent_result.get("intent", "general_inquiry")
     template = PLAN_TEMPLATES.get(intent_type, PLAN_TEMPLATES["general_inquiry"])
-    plan = [dict(step) for step in template]
-    return plan
+    # Deep copy so PlannerAgent mutations to input_params never leak into PLAN_TEMPLATES.
+    return copy.deepcopy(template)

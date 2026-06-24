@@ -1,10 +1,16 @@
-"""Graph Tools for Sprint 2 — EntityLookup and RelationTraversal."""
+"""Graph Tools — EntityLookup and RelationTraversal backed by OntologyGraph."""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
+
 from runtime.evidence.contract import make_evidence, SourceType
 from runtime.tools.base import BaseTool, ToolResult, ToolStatus
-from runtime.tools.ontology_data import ONTOLOGY_ENTITIES, ONTOLOGY_RELATIONS
+
+if TYPE_CHECKING:
+    from knowledge.ontology.graph import EntityType, OntologyGraph
 
 
 class EntityLookupInput(BaseModel):
@@ -17,40 +23,84 @@ class EntityLookupOutput(BaseModel):
 
 
 class EntityLookupTool(BaseTool[EntityLookupInput, EntityLookupOutput]):
+    def __init__(self, ontology: Optional["OntologyGraph"] = None):
+        self._ontology = ontology
+
+    def set_ontology(self, ontology: "OntologyGraph") -> None:
+        self._ontology = ontology
+
+    def _graph(self) -> "OntologyGraph":
+        if self._ontology is None:
+            from knowledge.ontology.builder import build_insurance_ontology
+            self._ontology = build_insurance_ontology()
+        return self._ontology
+
     @property
-    def name(self) -> str: return "entity_lookup"
+    def name(self) -> str:
+        return "entity_lookup"
+
     @property
-    def description(self) -> str: return "Query ontology entities by name or type"
+    def description(self) -> str:
+        return "Query ontology entities by name or type"
+
     @property
-    def input_schema(self): return EntityLookupInput
+    def input_schema(self):
+        return EntityLookupInput
+
     @property
-    def output_schema(self): return EntityLookupOutput
+    def output_schema(self):
+        return EntityLookupOutput
 
     def execute(self, input_data: EntityLookupInput) -> ToolResult:
-        results = []
-        name = input_data.entity_name.lower().strip()
-        types_to_search = [input_data.entity_type] if input_data.entity_type else list(ONTOLOGY_ENTITIES.keys())
+        from knowledge.ontology.graph import EntityType
 
-        for etype in types_to_search:
-            for entity in ONTOLOGY_ENTITIES.get(etype, []):
-                if name:
-                    if name not in entity["name"].lower() and not any(
-                        name in alias.lower() for alias in entity.get("aliases", [])
-                    ):
-                        continue
-                results.append({
-                    "entity_id": entity["entity_id"], "name": entity["name"],
-                    "type": entity["type"], "aliases": entity.get("aliases", []),
-                    **{k: v for k, v in entity.items() if k not in ("entity_id", "name", "type", "aliases")}
-                })
+        g = self._graph()
+        results: List[Dict[str, Any]] = []
+        name = input_data.entity_name.strip()
 
-        evidence = [make_evidence(r["entity_id"], r["entity_id"],
-                    f"Entity: {r['name']} [{r['type']}]",
-                    SourceType.ENTITY_REGISTRY) for r in results]
+        etype: Optional[EntityType] = None
+        if input_data.entity_type:
+            try:
+                etype = EntityType(input_data.entity_type)
+            except ValueError:
+                pass
 
-        status = ToolStatus.SUCCESS if results else ToolStatus.EMPTY
+        if name:
+            for entity in g.lookup(name, etype):
+                results.append(self._entity_dict(entity))
+        elif etype:
+            for entity in g.get_entities_by_type(etype):
+                results.append(self._entity_dict(entity))
+        else:
+            for entity in g._entities.values():
+                results.append(self._entity_dict(entity))
+
+        seen = set()
+        unique = []
+        for r in results:
+            if r["entity_id"] not in seen:
+                seen.add(r["entity_id"])
+                unique.append(r)
+
+        evidence = [
+            make_evidence(r["entity_id"], r["entity_id"],
+                          f"Entity: {r['name']} [{r['type']}]",
+                          SourceType.ENTITY_REGISTRY)
+            for r in unique
+        ]
+        status = ToolStatus.SUCCESS if unique else ToolStatus.EMPTY
         return ToolResult(tool_name=self.name, status=status,
-                         data={"entities": results}, evidence=evidence)
+                          data={"entities": unique}, evidence=evidence)
+
+    @staticmethod
+    def _entity_dict(entity) -> Dict[str, Any]:
+        return {
+            "entity_id": entity.entity_id,
+            "name": entity.name,
+            "type": entity.entity_type.value,
+            "aliases": entity.aliases,
+            **entity.properties,
+        }
 
 
 class RelationTraversalInput(BaseModel):
@@ -64,49 +114,69 @@ class RelationTraversalOutput(BaseModel):
 
 
 class RelationTraversalTool(BaseTool[RelationTraversalInput, RelationTraversalOutput]):
+    def __init__(self, ontology: Optional["OntologyGraph"] = None):
+        self._ontology = ontology
+
+    def set_ontology(self, ontology: "OntologyGraph") -> None:
+        self._ontology = ontology
+
+    def _graph(self) -> "OntologyGraph":
+        if self._ontology is None:
+            from knowledge.ontology.builder import build_insurance_ontology
+            self._ontology = build_insurance_ontology()
+        return self._ontology
+
     @property
-    def name(self) -> str: return "relation_traversal"
+    def name(self) -> str:
+        return "relation_traversal"
+
     @property
-    def description(self) -> str: return "Traverse ontology relations"
+    def description(self) -> str:
+        return "Traverse ontology relations"
+
     @property
-    def input_schema(self): return RelationTraversalInput
+    def input_schema(self):
+        return RelationTraversalInput
+
     @property
-    def output_schema(self): return RelationTraversalOutput
+    def output_schema(self):
+        return RelationTraversalOutput
 
     def execute(self, input_data: RelationTraversalInput) -> ToolResult:
+        from knowledge.ontology.graph import RelationType
+
+        g = self._graph()
+        rel_type = None
+        if input_data.relation_type:
+            try:
+                rel_type = RelationType(input_data.relation_type)
+            except ValueError:
+                pass
+
+        if input_data.direction == "outgoing":
+            rels = g.get_outgoing(input_data.entity_id, rel_type)
+        else:
+            rels = g.get_incoming(input_data.entity_id, rel_type)
+
         paths = []
-        for rel in ONTOLOGY_RELATIONS:
-            if input_data.direction == "outgoing":
-                if rel["source"] != input_data.entity_id:
-                    continue
-            else:
-                if rel["target"] != input_data.entity_id:
-                    continue
-            if input_data.relation_type and rel["relation"] != input_data.relation_type:
-                continue
-            target_id = rel["target"] if input_data.direction == "outgoing" else rel["source"]
-            target_entity = self._resolve_entity(target_id)
+        for rel in rels:
+            target_id = rel.target_id if input_data.direction == "outgoing" else rel.source_id
+            target = g.get_entity(target_id)
             paths.append({
-                "source": rel["source"],
-                "relation": rel["relation"],
+                "source": rel.source_id,
+                "relation": rel.relation_type.value,
                 "target": target_id,
-                "target_name": target_entity["name"] if target_entity else "Unknown",
-                "target_type": target_entity["type"] if target_entity else "Unknown",
-                "evidence": rel.get("evidence", ""),
+                "target_name": target.name if target else "Unknown",
+                "target_type": target.entity_type.value if target else "Unknown",
+                "evidence": ",".join(rel.evidence_refs) if rel.evidence_refs else "",
             })
 
-        evidence = [make_evidence(p["source"], p["target"],
-                    f"{p['relation']} -> {p['target_name']}",
-                    SourceType.ONTOLOGY) for p in paths]
-
+        evidence = [
+            make_evidence(p["source"], p["target"],
+                          f"{p['relation']} -> {p['target_name']}",
+                          SourceType.ONTOLOGY)
+            for p in paths
+        ]
         status = ToolStatus.SUCCESS if paths else ToolStatus.EMPTY
         return ToolResult(tool_name=self.name, status=status,
-                         data={"paths": paths}, evidence=evidence)
-
-    @staticmethod
-    def _resolve_entity(entity_id: str) -> Optional[Dict[str, Any]]:
-        for entities in ONTOLOGY_ENTITIES.values():
-            for e in entities:
-                if e["entity_id"] == entity_id:
-                    return e
-        return None
+                          data={"paths": paths}, evidence=evidence)

@@ -13,10 +13,11 @@ class TestCatalogToRuntime:
         })
         assert p["deductible"] == 10000
 
-    def test_missing_deductible_marked_unknown(self):
+    def test_missing_deductible_uses_template_default(self):
         p = _catalog_to_runtime({
             "product_id": "P002",
             "name": "测试2",
             "category": "重疾险",
         })
-        assert p["deductible"] == "unknown"
+        assert isinstance(p["deductible"], int)
+        assert p["deductible"] == 10000

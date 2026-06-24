@@ -6,20 +6,7 @@ from runtime.evidence.contract import make_evidence, SourceType
 from runtime.tools.base import BaseTool, ToolResult, ToolStatus
 from runtime.tools.data import PRODUCT_CATALOG
 
-EXTRACTION_PATTERNS = {
-    "waiting_period": ["waiting_period_days"],
-    "deductible": ["deductible"],
-    "coverage_limit": ["coverage_limit"],
-    "critical_illness_limit": ["critical_illness_limit"],
-    "outpatient_limit": ["outpatient_limit"],
-    "premium": ["premium_min", "premium_max", "premium_reference"],
-    "guaranteed_renewal": ["is_guaranteed_renewal", "guaranteed_renewal_years"],
-    "eligibility": ["eligibility"],
-    "covered_diseases": ["covered_diseases"],
-    "exclusions": ["exclusions"],
-    "special_services": ["special_services"],
-}
-
+from runtime.tools.field_maps import EXTRACTION_PATTERNS
 
 class AttributeExtractionInput(BaseModel):
     attributes: List[str] = Field(default_factory=list)

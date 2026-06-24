@@ -199,7 +199,7 @@
       "source_ref": "PRODUCT_CATALOG-P007",
       "ontology_mapping": {
         "entities": [
-          "ENT-P004(类比)"
+          "ENT-P004"
         ],
         "relations": [
           "applies_to"

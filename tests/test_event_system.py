@@ -169,7 +169,7 @@ class TestEventStore:
     def test_clear_empties_store(self):
         store = EventStore()
         store.append(user_query_event("s1", 1, "test"))
-        store.clear()
+        store.clear(_testing_only=True)
         assert store.count() == 0
         assert store.session_count() == 0
 

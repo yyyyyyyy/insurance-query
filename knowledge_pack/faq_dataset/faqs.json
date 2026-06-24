@@ -1,7 +1,8 @@
 {
   "meta": {
     "total": 983,
-    "version": "1.0"
+    "version": "1.0",
+    "third_party_sources": "Many entries sourced from community platforms (小红书, 百度知道, etc.); use official/regulatory subsets for production eval."
   },
   "faqs": [
     {

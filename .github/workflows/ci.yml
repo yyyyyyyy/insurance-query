@@ -39,6 +39,11 @@ jobs:
         run: |
           ruff check . --ignore=E501,E402 --exclude=.git,__pycache__,.pytest_cache,venv,.venv,knowledge_pack
 
+      - name: Bootstrap knowledge ingest
+        run: |
+          python3 scripts/ingest_documents.py --bootstrap-samples
+          python3 scripts/ingest_documents.py --all
+
       - name: Fast concurrency gate
         run: |
           pytest tests/test_sqlite_event_store.py tests/test_concurrency.py -q --tb=short --timeout=120
@@ -46,11 +51,9 @@ jobs:
           LLM_ENABLED: false
           EMBEDDING_FAST_MODE: true
 
-      - name: Type check with mypy (expanded scope)
-        # TODO: tighten once mypy error count is near zero
-        continue-on-error: true
+      - name: Type check with mypy
         run: |
-          mypy runtime evaluation infra apps knowledge
+          mypy runtime evaluation infra apps knowledge --ignore-missing-imports
 
       - name: Run tests
         run: |

@@ -17,6 +17,8 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    mem_limit: 1g
+    cpus: "2.0"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

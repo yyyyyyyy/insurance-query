@@ -61,7 +61,10 @@ class EvaluationEngine:
         dims["efficiency"] = self._score_efficiency(trace)
 
         total = sum(dims[k].normalized() * self.dimension_weights[k] for k in dims) * 100
-        total = round(total, 1)
+        eff_failures = dims["efficiency"].failure_points
+        if eff_failures:
+            total -= min(25.0, len(eff_failures) * 8.0)
+        total = round(max(0.0, total), 1)
 
         failures = []
         for d in dims.values():

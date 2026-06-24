@@ -1,0 +1,16 @@
+《小蜜蜂(畅享版)意外险》条款摘要
+产品编号：P015
+保险公司：平安产险
+产品类别：意外险
+子类别：易投保意外
+投保年龄：18-65岁
+保障责任：
+  - accidental_death: 最高50万
+  - accidental_medical: 0免赔社保内100%报销
+  - fracture_allowance: 骨折津贴
+  - third_party_liability: 第三者责任
+参考保费（元/年）：
+  - basic: 86
+  - standard: 156
+
+【说明】本文件由 catalog.json 自动生成的开发用条款摘要，非完整 PDF 条款；生产环境请替换为官网下载的正式条款文档。

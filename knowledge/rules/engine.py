@@ -1,15 +1,5 @@
 """
-Rule Engine — Evaluates 45 decision rules against query context and tool outputs.
-
-Loads rules from knowledge_pack/rules/*.json at initialization. Matches rules
-against intent type, tool results, and ontology context. Produces structured
-decisions (approve/reject/exclusion/etc.) with confidence and source citations.
-
-Usage:
-    engine = RuleEngine()
-    decisions = engine.evaluate(intent="coverage_question", tool_results=...)
-    for d in decisions:
-        print(d.rule_id, d.decision, d.confidence)
+Rule Engine — Evaluates decision rules against query context and tool outputs.
 """
 
 from __future__ import annotations
@@ -18,22 +8,19 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from runtime.config.intent_domains import INTENT_DOMAIN_MAP
 
-# ============================================================
-# Data Models
-# ============================================================
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class RuleDecision:
-    """A single rule evaluation result."""
     rule_id: str
     domain: str
     description: str
-    decision: str  # approve | reject | exclusion | extra_premium | standard_accept | etc.
+    decision: str
     action: str
-    confidence: str  # HIGH | MEDIUM | LOW
+    confidence: str
     source: str
     source_ref: str
     matched: bool = False
@@ -56,7 +43,6 @@ class RuleDecision:
 
 @dataclass
 class RuleEvaluation:
-    """Result of evaluating all relevant rules against a query."""
     intent: str
     rules_evaluated: int
     rules_matched: int
@@ -80,33 +66,7 @@ class RuleEvaluation:
         return any(d.decision == "reject" and d.confidence == "HIGH" for d in self.decisions)
 
 
-# ============================================================
-# Rule Engine
-# ============================================================
-
-
 class RuleEngine:
-    """Evaluates insurance decision rules against query context.
-
-    Supports:
-      - Intent-based rule filtering
-      - Keyword matching against query text
-      - Tool result evaluation (coverage limits, premiums, exclusions)
-      - Entity/regulation citation matching
-    """
-
-    # Intent → domain mapping
-    INTENT_DOMAIN_MAP = {
-        "product_comparison": ["claim", "clause"],
-        "coverage_question": ["claim", "clause"],
-        "claim_process": ["claim"],
-        "eligibility_check": ["underwriting", "eligibility"],
-        "regulation_lookup": [],  # all regulatory_document source rules
-        "price_inquiry": ["claim", "clause"],
-        "general_inquiry": [],
-    }
-
-    # Decision severity ordering
     DECISION_SEVERITY = {
         "reject": 4,
         "exclusion": 3,
@@ -126,7 +86,6 @@ class RuleEngine:
 
     @staticmethod
     def _load_rules() -> List[Dict[str, Any]]:
-        """Load all rules from knowledge_pack."""
         try:
             from runtime.tools.data_loader import load_rules
             return load_rules()
@@ -141,43 +100,24 @@ class RuleEngine:
         evidence: Optional[List[Dict[str, Any]]] = None,
         max_rules: int = 10,
     ) -> RuleEvaluation:
-        """Evaluate relevant rules against a query.
-
-        Args:
-            query_text: Original user query
-            intent: Classified intent type
-            tool_results: Dictionary of tool_name → output data
-            evidence: List of evidence items
-            max_rules: Maximum rules to include in result
-        """
         tool_results = tool_results or {}
         evidence = evidence or []
-
-        # Step 1: Filter rules by domain
         candidate_rules = self._filter_by_intent(intent)
-
-        # Step 2: Match rules against query context
         matched_decisions: List[RuleDecision] = []
         for rule in candidate_rules:
-            decision = self._evaluate_rule(rule, query_text, tool_results, evidence)
-            matched_decisions.append(decision)
-
-        # Step 3: Sort by relevance (matched first, then by severity)
+            matched_decisions.append(
+                self._evaluate_rule(rule, query_text, tool_results, evidence)
+            )
         matched_decisions.sort(
             key=lambda d: (
-                not d.matched,  # matched rules first
-                -self.DECISION_SEVERITY.get(d.decision, 0),  # severe decisions first
-                {"HIGH": 3, "MEDIUM": 2, "LOW": 1}.get(d.confidence, 0),  # high confidence first
+                not d.matched,
+                -self.DECISION_SEVERITY.get(d.decision, 0),
+                {"HIGH": 3, "MEDIUM": 2, "LOW": 1}.get(d.confidence, 0),
             )
         )
-
-        # Limit to max_rules
         matched_decisions = matched_decisions[:max_rules]
         matched_count = sum(1 for d in matched_decisions if d.matched)
-
-        # Step 4: Generate summary
         summary = self._generate_summary(intent, matched_decisions, matched_count)
-
         return RuleEvaluation(
             intent=intent,
             rules_evaluated=len(candidate_rules),
@@ -187,15 +127,11 @@ class RuleEngine:
         )
 
     def _filter_by_intent(self, intent: str) -> List[Dict[str, Any]]:
-        """Filter rules based on intent type."""
-        domains = self.INTENT_DOMAIN_MAP.get(intent, [])
-
+        domains = INTENT_DOMAIN_MAP.get(intent, [])
         if intent == "regulation_lookup":
             return [r for r in self._rules if r.get("source") == "regulatory_document"]
-
         if domains:
             return [r for r in self._rules if r.get("domain") in domains]
-
         return list(self._rules)
 
     def _evaluate_rule(
@@ -205,22 +141,17 @@ class RuleEngine:
         tool_results: Dict[str, Any],
         evidence: List[Dict[str, Any]],
     ) -> RuleDecision:
-        """Evaluate a single rule against query context."""
         conditions = rule.get("if", {}).get("conditions", [])
         then_block = rule.get("then", {})
         description = rule.get("description", "")
-
-        match_reasons = []
-
-        # Check 1: Strict condition matching when conditions exist
+        match_reasons: List[str] = []
         tool_match = False
         if conditions:
             for cond in conditions:
-                field = cond.get("field", "")
-                if self._check_condition(cond, tool_results, evidence):
-                    match_reasons.append(f"condition_matched: {field}")
+                field_name = cond.get("field", "")
+                if _check_condition(cond, tool_results, evidence):
+                    match_reasons.append(f"condition_matched: {field_name}")
                     tool_match = True
-            # Rules with conditions require at least one condition match
             if not tool_match:
                 return RuleDecision(
                     rule_id=rule.get("rule_id", ""),
@@ -235,11 +166,8 @@ class RuleEngine:
                     match_reason="conditions not satisfied",
                 )
 
-        # Check 2: Keyword matching in query text (fallback when no conditions)
         keywords = self._extract_keywords(description)
         query_match = any(kw in query_text for kw in keywords if len(kw) >= 2)
-
-        # Check 3: Evidence content matching (fallback when no conditions)
         evidence_match = False
         if not conditions:
             for ev in evidence[:10]:
@@ -249,7 +177,6 @@ class RuleEngine:
                     break
 
         matched = tool_match or query_match or evidence_match
-
         if matched:
             reason = " | ".join(match_reasons) if match_reasons else (
                 "keyword match in query" if query_match else
@@ -274,7 +201,6 @@ class RuleEngine:
 
     @staticmethod
     def _extract_keywords(description: str) -> List[str]:
-        """Extract key Chinese insurance terms from rule description."""
         insurance_terms = [
             "等待期", "免赔额", "如实告知", "意外伤害", "既往症",
             "续保", "解除合同", "赔付", "不予赔付", "除外",
@@ -283,52 +209,8 @@ class RuleEngine:
             "年金", "身故", "全残", "轻症", "重疾", "中症",
             "门诊", "住院", "手术", "药物", "检查费",
         ]
-        found = []
-        for term in insurance_terms:
-            if term in description:
-                found.append(term)
-        return found or [description[:6]]  # fallback: first 6 chars
-
-    @staticmethod
-    def _check_condition(
-        condition: Dict[str, Any],
-        tool_results: Dict[str, Any],
-        evidence: List[Dict[str, Any]],
-    ) -> bool:
-        """Check if a condition is satisfied by tool results or evidence.
-
-        Evidence matching checks the condition ``field`` against actual
-        dict keys (including dotted paths and metadata-wrapped keys) and
-        applies the same operator comparison used for tool results, rather
-        than doing a substring scan over the stringified evidence dict
-        (which previously matched ``age`` against ``page``, etc.).
-        """
-        field = condition.get("field", "")
-        operator = condition.get("operator", "equals")
-        value = condition.get("value", "")
-
-        # Search in tool results
-        for tool_name, tool_data in tool_results.items():
-            if _deep_get(tool_data, field) is not None:
-                actual = _deep_get(tool_data, field)
-                if _compare(actual, value, operator):
-                    return True
-
-        # Search in evidence: match field name as a real key, then apply
-        # the operator. Falls back to no match instead of a substring test.
-        for ev in evidence[:5]:
-            if not isinstance(ev, dict):
-                continue
-            actual = _deep_get(ev, field)
-            if actual is None:
-                # Try metadata-wrapped key (canonical evidence payloads)
-                meta = ev.get("metadata", {})
-                if isinstance(meta, dict):
-                    actual = _deep_get(meta, field)
-            if actual is not None and _compare(actual, value, operator):
-                return True
-
-        return False
+        found = [term for term in insurance_terms if term in description]
+        return found or [description[:6]]
 
     def _generate_summary(
         self,
@@ -336,44 +218,26 @@ class RuleEngine:
         decisions: List[RuleDecision],
         matched_count: int,
     ) -> str:
-        """Generate a human-readable summary of rule evaluation."""
         if matched_count == 0:
             return f"对意图[{intent}]评估了相关规则，未发现明确匹配项。"
-
         matched = [d for d in decisions if d.matched]
-
-        # Count decisions by type
         rejects = [d for d in matched if d.decision in ("reject", "exclusion")]
         approves = [d for d in matched if d.decision in ("approve", "eligible", "standard_accept")]
-        warnings = [d for d in matched if d.confidence == "HIGH" and d.decision in ("reject", "exclusion")]
-
         parts = []
         if rejects:
             parts.append(f"发现 {len(rejects)} 条拒绝/除外规则")
         if approves:
             parts.append(f"发现 {len(approves)} 条批准/符合规则")
-        if warnings:
-            high_conf_rejects = [d for d in rejects if d.confidence == "HIGH"]
-            if high_conf_rejects:
-                parts.append(f"其中 {len(high_conf_rejects)} 条为高置信度拒绝")
-
         if parts:
             return "；".join(parts) + f"。共评估 {len(decisions)} 条规则。"
         return f"对意图[{intent}]评估 {len(decisions)} 条规则，{matched_count} 条匹配。"
 
 
-# ============================================================
-# Helpers
-# ============================================================
-
-
 def _deep_get(data: Dict[str, Any], dotted_key: str) -> Any:
-    """Get a nested dict value using dot notation."""
     if not data or not isinstance(data, dict):
         return None
-    keys = dotted_key.split(".")
     val: Any = data
-    for k in keys:
+    for k in dotted_key.split("."):
         if isinstance(val, dict):
             val = val.get(k)
         else:
@@ -381,17 +245,92 @@ def _deep_get(data: Dict[str, Any], dotted_key: str) -> Any:
     return val
 
 
-def _compare(actual: Any, expected: Any, operator: str) -> bool:
-    """Compare actual value against expected using operator."""
+def _resolve_variable(value: Any, tool_results: Dict[str, Any]) -> Any:
+    if not isinstance(value, str):
+        return value
+    var_map = {
+        "product_min_age": ("eligibility_check", "conditions.min_age"),
+        "product_max_age": ("eligibility_check", "conditions.max_age"),
+    }
+    if value not in var_map:
+        return value
+    tool_name, dotted = var_map[value]
+    tool_data = tool_results.get(tool_name, {})
+    resolved = _deep_get(tool_data, dotted)
+    if resolved is not None:
+        return resolved
+    product_id = tool_data.get("product_id")
+    if product_id:
+        try:
+            from runtime.tools.data import PRODUCT_CATALOG
+            product = next((p for p in PRODUCT_CATALOG if p["product_id"] == product_id), None)
+            if product:
+                elig = product.get("eligibility", {})
+                if value == "product_min_age":
+                    return elig.get("min_age", 0)
+                if value == "product_max_age":
+                    return elig.get("max_age", 65)
+        except Exception:
+            pass
+    return value
+
+
+def _compare(
+    actual: Any,
+    expected: Any,
+    operator: str,
+    tool_results: Optional[Dict[str, Any]] = None,
+) -> bool:
+    tool_results = tool_results or {}
     try:
+        if isinstance(expected, str) and expected.startswith("product_"):
+            expected = _resolve_variable(expected, tool_results)
         if operator == "equals":
             return str(actual).lower() == str(expected).lower()
-        if operator in ("contains", "in"):
+        if operator == "contains":
             return str(expected).lower() in str(actual).lower()
-        if operator == "gte" and isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
-            return actual >= expected
-        if operator == "lte" and isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
-            return actual <= expected
+        if operator == "in":
+            if isinstance(expected, list):
+                return actual in expected or str(actual) in [str(x) for x in expected]
+            return str(actual).lower() in str(expected).lower()
+        for op, fn in (
+            ("gte", lambda a, e: a >= e),
+            ("lte", lambda a, e: a <= e),
+            ("gt", lambda a, e: a > e),
+            ("lt", lambda a, e: a < e),
+        ):
+            if operator == op:
+                try:
+                    return fn(float(actual), float(expected))
+                except (TypeError, ValueError):
+                    return False
         return str(expected).lower() in str(actual).lower()
     except Exception:
         return False
+
+
+def _check_condition(
+    condition: Dict[str, Any],
+    tool_results: Dict[str, Any],
+    evidence: List[Dict[str, Any]],
+) -> bool:
+    field_name = condition.get("field", "")
+    operator = condition.get("operator", "equals")
+    value = condition.get("value", "")
+
+    for tool_data in tool_results.values():
+        actual = _deep_get(tool_data, field_name)
+        if actual is not None and _compare(actual, value, operator, tool_results):
+            return True
+
+    for ev in evidence[:5]:
+        if not isinstance(ev, dict):
+            continue
+        actual = _deep_get(ev, field_name)
+        if actual is None:
+            meta = ev.get("metadata", {})
+            if isinstance(meta, dict):
+                actual = _deep_get(meta, field_name)
+        if actual is not None and _compare(actual, value, operator, tool_results):
+            return True
+    return False

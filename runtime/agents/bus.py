@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections import deque
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -122,12 +123,15 @@ class AgentContext:
         }
 
 
+from runtime.config.constants import AGENT_BUS_MAX_LOG
+
+
 class AgentBus:
-    MAX_LOG = 1000
+    MAX_LOG = AGENT_BUS_MAX_LOG
 
     def __init__(self):
         self._agents: Dict[str, BaseAgent] = {}
-        self._log: List[AgentMessage] = []
+        self._log: deque = deque(maxlen=AGENT_BUS_MAX_LOG)
         self._lock = threading.Lock()
 
     def register(self, agent: BaseAgent) -> None:
@@ -136,8 +140,6 @@ class AgentBus:
     def send(self, msg: AgentMessage, ctx: Optional[AgentContext] = None) -> AgentMessage:
         with self._lock:
             self._log.append(msg)
-            if len(self._log) > self.MAX_LOG:
-                self._log = self._log[-self.MAX_LOG:]
         agent = self._agents.get(msg.recipient)
         if not agent:
             return AgentMessage(

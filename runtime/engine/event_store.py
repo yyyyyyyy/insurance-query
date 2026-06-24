@@ -6,6 +6,7 @@ ARCHITECTURE RULE #3: All state is event-sourced. No hidden state allowed.
 
 from __future__ import annotations
 
+import threading
 import uuid
 from abc import ABC
 from contextlib import contextmanager
@@ -459,35 +460,49 @@ class EventStore:
 
     def __init__(self):
         self._events: List[Event] = []
-        self._session_index: Dict[str, List[int]] = {}  # session_id -> list of indices
+        self._session_index: Dict[str, List[int]] = {}
+        self._event_id_index: Dict[str, Event] = {}
         self._batch_depth = 0
         self._batch_memory_snapshot: Optional[int] = None
+        self._lock = threading.RLock()
+        self._session_locks: Dict[str, threading.RLock] = {}
+        self._session_locks_guard = threading.Lock()
+
+    def _session_lock(self, session_id: str) -> threading.RLock:
+        """Per-session lock for serializing concurrent turns (matches SqliteEventStore API)."""
+        with self._session_locks_guard:
+            lock = self._session_locks.get(session_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._session_locks[session_id] = lock
+            return lock
 
     def append(self, event: Event) -> Event:
         """Append an event to the log. Returns the stored event (immutable)."""
-        idx = len(self._events)
-        self._events.append(event)
+        with self._lock:
+            idx = len(self._events)
+            self._events.append(event)
+            self._event_id_index[event.event_id] = event
 
-        if event.session_id not in self._session_index:
-            self._session_index[event.session_id] = []
-        self._session_index[event.session_id].append(idx)
+            if event.session_id not in self._session_index:
+                self._session_index[event.session_id] = []
+            self._session_index[event.session_id].append(idx)
 
-        return event
+            return event
 
     def get_session_events(self, session_id: str) -> List[Event]:
         """Retrieve all events for a given session in insertion order."""
-        indices = self._session_index.get(session_id, [])
-        return [self._events[i] for i in indices]
+        with self._lock:
+            indices = self._session_index.get(session_id, [])
+            return [self._events[i] for i in indices]
 
     def get_all_events(self) -> List[Event]:
         """Return a copy of all events."""
         return list(self._events)
 
     def get_event_by_id(self, event_id: str) -> Optional[Event]:
-        for event in self._events:
-            if event.event_id == event_id:
-                return event
-        return None
+        with self._lock:
+            return self._event_id_index.get(event_id)
 
     def count(self) -> int:
         return len(self._events)
@@ -499,21 +514,29 @@ class EventStore:
         """Return all session IDs with events."""
         return list(self._session_index.keys())
 
-    def clear(self) -> None:
-        """Clear all events. Use with caution — primarily for testing."""
-        self._events.clear()
-        self._session_index.clear()
+    def clear(self, *, _testing_only: bool = False) -> None:
+        """Clear all events. Testing-only unless ALLOW_EVENT_STORE_CLEAR=1."""
+        import os
+        if not _testing_only and os.environ.get("ALLOW_EVENT_STORE_CLEAR") != "1":
+            raise RuntimeError("EventStore.clear() is restricted to testing")
+        with self._lock:
+            self._events.clear()
+            self._session_index.clear()
+            self._event_id_index.clear()
 
     def _truncate_to(self, count: int) -> None:
         """Truncate in-memory log to *count* events and rebuild session index."""
-        if count < 0 or count > len(self._events):
-            return
-        self._events = self._events[:count]
-        self._session_index.clear()
-        for idx, event in enumerate(self._events):
-            if event.session_id not in self._session_index:
-                self._session_index[event.session_id] = []
-            self._session_index[event.session_id].append(idx)
+        with self._lock:
+            if count < 0 or count > len(self._events):
+                return
+            self._events = self._events[:count]
+            self._session_index.clear()
+            self._event_id_index.clear()
+            for idx, event in enumerate(self._events):
+                self._event_id_index[event.event_id] = event
+                if event.session_id not in self._session_index:
+                    self._session_index[event.session_id] = []
+                self._session_index[event.session_id].append(idx)
 
     def replay(self, session_id: str) -> List[Event]:
         """Replay all events for a session (used by reducer to rebuild state)."""

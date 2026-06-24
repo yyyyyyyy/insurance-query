@@ -1,8 +1,25 @@
 # 数据采集与导入
 
-> **当前状态**：知识包数据已清空，请从 `products/catalog.json` 和 `regulations/catalog.json` 开始整理。
+知识包以 `products/catalog.json`（20 款产品）与 `regulations/catalog.json`（30 条法规元数据）为真值来源；运行时检索数据来自 ingest 产物 `chunks/ingested_documents.json`。
 
-仅两个入口，**采集与导入分离**：
+## 开发环境快速导入（推荐）
+
+```bash
+make ingest    # bootstrap 摘要样本 + 导入全部 manifest 条目
+make ingest-list
+```
+
+**Dev bootstrap**（`bootstrap_dev_samples`）会：
+
+- 对 P001/P002：从内置 `document_data` 导出条款摘录 TXT
+- 对 P003–P020：从 `catalog.json` 字段**合成结构化条款摘要**（每产品 &lt;10KB，非完整 PDF）
+- 注册理赔流程 dev 样本（若 manifest 中缺失）
+
+生产环境应使用 `fetch_documents.py` 拉取官网 PDF，或手动放入 `policy_documents/` / `regulations/documents/` 后重新 `--all` 导入。
+
+法规 manifest 与 catalog 对齐：`sync_regulation_manifest_from_catalog()` 将 catalog 中尚无文档的 REG 登记为 `enabled: false`。
+
+## 1. 采集（可选）
 
 | 步骤 | 命令 | 说明 |
 |------|------|------|

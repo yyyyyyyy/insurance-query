@@ -143,6 +143,7 @@ class HealthResponse(BaseModel):
     version: str
     sessions_processed: int = 0
     total_events: int = 0
+    knowledge_ready: bool = False
     llm_enabled: bool = False
     llm_provider: Optional[str] = None
     llm_model: Optional[str] = None
@@ -270,6 +271,7 @@ async def health_check():
         version="3.0.0",
         sessions_processed=engine.event_store.session_count(),
         total_events=engine.event_store.count(),
+        knowledge_ready=getattr(engine, "_knowledge_loaded", False),
         llm_enabled=llm.is_configured,
         llm_provider=llm.provider if llm.is_configured else None,
         llm_model=llm.model if llm.is_configured else None,

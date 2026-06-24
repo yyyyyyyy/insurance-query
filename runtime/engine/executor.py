@@ -1,11 +1,7 @@
 """
 Tool Executor for InsureQuery Runtime.
 
-Sprint 1: Mock tool execution with deterministic, schema-compliant outputs.
-Sprint 2: Replace with real tool implementations while keeping the same interface.
-
-ARCHITECTURE RULE #4: Tools are deterministic execution units.
-No LLM reasoning inside tools.
+DEPRECATED: Sprint 1 mock executor. Use runtime.tools.registry.ToolDispatcher instead.
 """
 
 from __future__ import annotations

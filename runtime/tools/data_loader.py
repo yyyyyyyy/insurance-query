@@ -120,16 +120,6 @@ def _catalog_to_runtime(product_entry: Dict[str, Any]) -> Dict[str, Any]:
     # Diseases (derive from category and coverage)
     p["covered_diseases"] = _resolve_diseases_for_category(category)
 
-    if "deductible" not in product_entry:
-        p["deductible"] = "unknown"
-    if "coverage" not in product_entry:
-        p["coverage_limit"] = "unknown"
-        p["critical_illness_limit"] = "unknown"
-    if "premium_reference" not in product_entry:
-        p["premium_reference"] = {}
-        p["premium_min"] = "unknown"
-        p["premium_max"] = "unknown"
-
     return p
 
 
@@ -298,17 +288,9 @@ def find_matching_rules(intent_type: str, rules: List[Dict[str, Any]],
       claim_process → claim rules
       general_inquiry → all rules
     """
-    domain_map = {
-        "coverage_question": ["claim", "clause"],
-        "product_comparison": ["claim", "clause"],
-        "eligibility_check": ["eligibility", "underwriting"],
-        "regulation_lookup": [],  # will filter by source below
-        "claim_process": ["claim"],
-        "price_inquiry": ["claim", "clause"],
-        "general_inquiry": [],
-    }
+    from runtime.config.intent_domains import INTENT_DOMAIN_MAP
 
-    domains = domain_map.get(intent_type, [])
+    domains = INTENT_DOMAIN_MAP.get(intent_type, [])
 
     if intent_type == "regulation_lookup":
         matching = [r for r in rules if r.get("source") == "regulatory_document"]

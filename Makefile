@@ -1,4 +1,4 @@
-.PHONY: help install run test lint clean eval docker-build docker-up docker-down
+.PHONY: help install run test lint clean eval ingest ingest-list docker-build docker-up docker-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -20,6 +20,13 @@ lint: ## Run ruff linter
 
 lint-fix: ## Auto-fix lint issues
 	ruff check . --fix --ignore=E501,E402,F841,F811 --exclude=.git,__pycache__,.pytest_cache,venv,.venv,knowledge_pack
+
+ingest: ## Bootstrap dev samples and ingest all documents
+	python3 scripts/ingest_documents.py --bootstrap-samples
+	python3 scripts/ingest_documents.py --all
+
+ingest-list: ## Show document ingest status
+	python3 scripts/ingest_documents.py --list
 
 eval: ## Run batch evaluation
 	python -c "

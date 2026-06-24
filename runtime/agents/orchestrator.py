@@ -40,7 +40,7 @@ from runtime.evidence.adapters import (
     process_to_candidates,
     memory_to_candidates,
 )
-from runtime.memory.resolver import resolve_query
+from runtime.agents.pipeline.memory import resolve_turn_memory
 from runtime.process.runner import ProcessRunner
 from infra.cache.store import TraceAwareCache
 from knowledge.ingestion.pipeline import ChunkStore
@@ -282,6 +282,7 @@ class MultiAgentEngine:
         logger = logging.getLogger(__name__)
 
         self._onto = build_insurance_ontology()
+        self.dispatcher.registry.wire_ontology(self._onto)
         self._chunk_store = ChunkStore()
         ei = EvidenceIndex()
 
@@ -300,6 +301,11 @@ class MultiAgentEngine:
             DOCUMENT_STORE.clear()
             DOCUMENT_STORE.extend(ingested_docs)
             logger.info("Loaded %d documents into retrieval index", len(ingested_docs))
+        else:
+            logger.warning(
+                "No ingested documents; using DOCUMENT_STORE fallback (%d docs)",
+                len(DOCUMENT_STORE),
+            )
 
         for doc in DOCUMENT_STORE:
             existing_chunks = doc.get("chunks", [])
@@ -319,12 +325,15 @@ class MultiAgentEngine:
                         chunk, doc.get("document_type", "policy_clause"), doc["title"],
                     )
                 continue
-            raw = "\n\n".join(
-                f"[{c.get('clause', '')}] {c['content']}"
-                for c in existing_chunks
-            )
+            raw_text = (doc.get("content") or doc.get("text") or "").strip()
+            if not raw_text:
+                logger.warning(
+                    "Skipping document %s: no chunks and no raw content",
+                    doc.get("document_id", "?"),
+                )
+                continue
             _, chunks = ingest_text_document(
-                raw, doc["document_id"], doc["title"],
+                raw_text, doc["document_id"], doc["title"],
                 doc.get("document_type", "policy_clause"),
                 self._chunk_store, self._embedding_gen,
             )
@@ -336,6 +345,7 @@ class MultiAgentEngine:
             vector_store=self._vector_store,
         )
         self._retriever.fit()
+        self.dispatcher.registry.wire_retriever(self._retriever)
         self._rules = load_rules()
 
         ra = self.bus.get_agent("retrieval")
@@ -370,7 +380,7 @@ class MultiAgentEngine:
         t0: float,
     ) -> Dict[str, Any]:
         # --- Memory resolve (before cache — session-aware key) ---
-        memory_resolution = resolve_query(self.working_memory, session_id, query_text)
+        memory_resolution = resolve_turn_memory(self.working_memory, session_id, query_text)
         resolved_query = memory_resolution["resolved_query"]
         retrieval_query = memory_resolution.get("retrieval_query", resolved_query)
         memory_context = memory_resolution["memory_context"]
@@ -582,51 +592,34 @@ class MultiAgentEngine:
         )
 
         # --- Canonical evidence selection ---
-        allow_legacy = (
-            os.environ.get("LLM_ENABLED", "true").lower() in {"0", "false", "no"}
-            or os.environ.get("PYTEST_CURRENT_TEST") is not None
-        )
-        use_canonical = os.environ.get("USE_CANONICAL_EVIDENCE", "1") != "0"
-        if not use_canonical and not allow_legacy:
-            import logging
-            logging.getLogger(__name__).warning(
-                "USE_CANONICAL_EVIDENCE=0 ignored in production; enabling selector",
-            )
-            use_canonical = True
         ces = CanonicalEvidenceSet()
         evidence_threshold = self.tuner.get_evidence_threshold()
+        for tname, ar_dict in agent_results.items():
+            if ar_dict.get("status") == "success" and ar_dict.get("result"):
+                ev_list = ar_dict["result"].get("evidence", [])
+                ces.add_candidates(tool_evidence_to_candidates(tname, ev_list))
+        ces.add_candidates(hybrid_chunks_to_candidates(retrieval_chunks))
+        ces.add_candidates(rules_to_candidates(matched))
+        if process_result:
+            ces.add_candidates(process_to_candidates(process_result.to_dict()))
+        ces.add_candidates(memory_to_candidates(memory_context))
 
-        if use_canonical:
-            for tname, ar_dict in agent_results.items():
-                if ar_dict.get("status") == "success" and ar_dict.get("result"):
-                    ev_list = ar_dict["result"].get("evidence", [])
-                    ces.add_candidates(tool_evidence_to_candidates(tname, ev_list))
-            ces.add_candidates(hybrid_chunks_to_candidates(retrieval_chunks))
-            ces.add_candidates(rules_to_candidates(matched))
-            if process_result:
-                ces.add_candidates(process_to_candidates(process_result.to_dict()))
-            ces.add_candidates(memory_to_candidates(memory_context))
+        accepted_ids, rejected_ids = select_evidence_for_answer(
+            ces,
+            evidence_threshold=evidence_threshold,
+            intent=intent_type,
+            force_accept_sources={"rule"} if matched else set(),
+        )
+        accepted_evidence = ces.to_evidence_dicts(accepted_only=True)
+        ces.mark_used_in_answer(accepted_ids)
 
-            accepted_ids, rejected_ids = select_evidence_for_answer(
-                ces,
-                evidence_threshold=evidence_threshold,
-                intent=intent_type,
-                force_accept_sources={"rule"} if matched else set(),
-            )
-            accepted_evidence = ces.to_evidence_dicts(accepted_only=True)
-            ces.mark_used_in_answer(accepted_ids)
-
-            seq.append(
-                evidence_selected_event,
-                accepted_ids=accepted_ids,
-                rejected_ids=rejected_ids,
-                threshold=evidence_threshold,
-                snapshot=[i.to_dict() for i in ces.all_items()],
-            )
-        else:
-            accepted_evidence = list(all_evidence)
-            accepted_ids = []
-            rejected_ids = []
+        seq.append(
+            evidence_selected_event,
+            accepted_ids=accepted_ids,
+            rejected_ids=rejected_ids,
+            threshold=evidence_threshold,
+            snapshot=[i.to_dict() for i in ces.all_items()],
+        )
 
         # --- Answer ---
         from runtime.llm.answer import _format_citations, _compute_confidence
@@ -650,7 +643,7 @@ class MultiAgentEngine:
             "matched_rules": matched,
             "rule_count": rule_eval.rules_matched,
             "accepted_evidence_ids": accepted_ids,
-            "canonical_evidence": ces.to_event_payload() if use_canonical else {},
+            "canonical_evidence": ces.to_event_payload(),
         }
         if process_result:
             answer["process_result"] = process_result.to_dict()
@@ -663,7 +656,7 @@ class MultiAgentEngine:
             confidence=answer.get("confidence"),
             accepted_evidence_ids=accepted_ids,
             used_in_answer_ids=accepted_ids,
-            canonical_evidence_snapshot=ces.to_event_payload() if use_canonical else {},
+            canonical_evidence_snapshot=ces.to_event_payload(),
         )
 
         # --- Evaluation (event_store truth only) ---
@@ -679,6 +672,9 @@ class MultiAgentEngine:
         )
         ctx.evaluation = resp.payload
         eval_result = ctx.evaluation
+        if ctx.agent_statuses.get("evaluation") == AgentStatus.DEGRADED:
+            ctx.degraded_mode = True
+            seq.append(system_degraded_event, reason="evaluation:degraded")
 
         seq.append(
             evaluation_completed_event,
@@ -761,6 +757,11 @@ class MultiAgentEngine:
             result["working_memory"] = self.working_memory.get_context_for_query(session_id)
 
         return result
+
+    def shutdown(self) -> None:
+        """Release async executor resources."""
+        if hasattr(self.async_exec, "shutdown"):
+            self.async_exec.shutdown(wait=False)
 
     def _evaluate_rules(self, query_text, intent_type, tool_data, all_evidence):
         from knowledge.rules.engine import RuleEngine

@@ -7,10 +7,12 @@ import pytest
 
 from knowledge.ingestion.policy_ingest import (
     ManifestEntry,
+    bootstrap_dev_samples,
     ingest_manifest_entry,
     init_manifest_from_catalog,
     load_ingested_documents,
     merge_documents,
+    _resolve_file_path,
 )
 from knowledge.ingestion.pipeline import _split_long_text, chunk_document
 
@@ -108,6 +110,31 @@ class TestPolicyIngest:
             pytest.skip("No ingested documents yet")
         data = load_ingested_documents()
         assert "documents" in data
+        assert data["meta"].get("total_documents", 0) >= 1
+
+    def test_bootstrap_dev_samples_writes_txt(self, tmp_path, monkeypatch):
+        import knowledge.ingestion.policy_ingest as pi
+
+        catalog = tmp_path / "knowledge_pack" / "products" / "catalog.json"
+        catalog.parent.mkdir(parents=True)
+        catalog.write_text(json.dumps({
+            "products": [
+                {"product_id": "P001", "name": "e生保", "category": "百万医疗险"},
+            ]
+        }), encoding="utf-8")
+        policy_dir = tmp_path / "knowledge_pack" / "policy_documents"
+        policy_dir.mkdir(parents=True)
+        monkeypatch.setattr(pi, "ROOT", tmp_path)
+        monkeypatch.setattr(pi, "POLICY_DOCS_DIR", policy_dir)
+        monkeypatch.setattr(pi, "MANIFEST_PATH", policy_dir / "manifest.json")
+        init_manifest_from_catalog(overwrite=True)
+
+        written = bootstrap_dev_samples(overwrite=True)
+        assert written
+        entry = next(e for e in pi.load_manifest() if e.product_id == "P001")
+        resolved = _resolve_file_path(entry)
+        assert resolved.suffix == ".txt"
+        assert resolved.exists()
 
     def test_init_manifest_from_catalog(self, tmp_path, monkeypatch):
         import knowledge.ingestion.policy_ingest as pi

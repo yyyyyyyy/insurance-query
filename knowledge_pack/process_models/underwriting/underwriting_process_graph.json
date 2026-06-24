@@ -282,7 +282,7 @@
       "id": "D_honesty",
       "node": "health_declaration",
       "question": "健康告知是否真实？",
-      "yes": "honesty_check→risk_assessment",
+      "yes": "honesty_check",
       "no": "declined",
       "rule_based": true,
       "evidence_refs": [
@@ -296,8 +296,8 @@
       "id": "D_risk",
       "node": "risk_assessment",
       "question": "被保险人属于标准体还是次标准体？",
-      "yes": "standard_risk→standard_accepted",
-      "no": "substandard_risk→加费/除外/拒保",
+      "yes": "standard_risk",
+      "no": "substandard_risk",
       "rule_based": true,
       "tool_driven": true,
       "evidence_refs": [
@@ -311,7 +311,7 @@
       "node": "added_premium_eval",
       "question": "投保人是否接受加费条件？",
       "yes": "added_premium_accepted",
-      "no": "exclusion_eval 或 declined",
+      "no": "exclusion_eval",
       "rule_based": false,
       "evidence_refs": [
         "REG001-第二十一条"

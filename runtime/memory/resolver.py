@@ -103,9 +103,13 @@ def resolve_query(
     memory_context["active_process"] = ctx.active_process
     memory_context["previous_product_ids"] = _extract_product_ids(ctx)
 
+    turn_count = memory_context.get("turn_count", 0)
     is_follow_up = bool(
-        memory_context.get("is_follow_up")
-        and (FOLLOW_UP_MARKERS.search(query) or PRODUCT_REF_MARKERS.search(query))
+        turn_count > 0
+        and (
+            FOLLOW_UP_MARKERS.search(query)
+            or PRODUCT_REF_MARKERS.search(query)
+        )
     )
     memory_context["is_follow_up"] = is_follow_up
 
@@ -127,6 +131,19 @@ def resolve_query(
     primary_product = prev_products[0] if prev_products else (
         prev_entities[0] if prev_entities else ""
     )
+
+    if primary_product:
+        try:
+            from runtime.tools.data import PRODUCT_CATALOG
+            known = {
+                p["product_id"] for p in PRODUCT_CATALOG
+            } | {p.get("name", "") for p in PRODUCT_CATALOG}
+            if primary_product not in known and not any(
+                primary_product in p.get("name", "") for p in PRODUCT_CATALOG
+            ):
+                primary_product = ""
+        except Exception:
+            pass
 
     if primary_product:
         injected_entities.append({

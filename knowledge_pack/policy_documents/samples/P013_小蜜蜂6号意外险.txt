@@ -1,0 +1,18 @@
+《小蜜蜂6号意外险》条款摘要
+产品编号：P013
+保险公司：太平洋保险
+产品类别：意外险
+子类别：综合意外
+投保年龄：18-60岁
+保障责任：
+  - accidental_death: 最高100万
+  - accidental_medical: 意外医疗0免赔不限社保100%报销
+  - sudden_death: 猝死保障
+  - hospitalization_allowance: 住院津贴100元/天
+  - transportation_extra: 航空意外最高1000万
+参考保费（元/年）：
+  - classic: 96
+  - premium: 156
+  - supreme: 296
+
+【说明】本文件由 catalog.json 自动生成的开发用条款摘要，非完整 PDF 条款；生产环境请替换为官网下载的正式条款文档。

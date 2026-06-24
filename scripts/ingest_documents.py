@@ -13,10 +13,23 @@ sys.path.insert(0, str(ROOT))
 
 from knowledge.ingestion.policy_ingest import (  # noqa: E402
     OUTPUT_PATH,
+    bootstrap_dev_samples,
     init_manifest_from_catalog,
     ingest_all,
     list_ingest_status,
+    sync_regulation_manifest_from_catalog,
 )
+
+
+def cmd_bootstrap(args: argparse.Namespace) -> int:
+    added = sync_regulation_manifest_from_catalog()
+    if added:
+        print(f"Regulation manifest: added {added} catalog-only entries (disabled)")
+    paths = bootstrap_dev_samples(overwrite=args.force)
+    print(f"Dev samples ready: {len(paths)} file(s) in knowledge_pack/policy_documents/samples/")
+    for p in paths:
+        print(f"  - {p.name}")
+    return 0
 
 
 def cmd_init(_: argparse.Namespace) -> int:
@@ -94,6 +107,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Import insurer/regulatory PDF/TXT into retrieval index",
     )
+    parser.add_argument("--bootstrap-samples", action="store_true",
+                        help="Export built-in clause excerpts to policy_documents/samples/")
     parser.add_argument("--init", action="store_true",
                         help="Init product manifest from catalog")
     parser.add_argument("--list", action="store_true", help="List import status")
@@ -108,6 +123,8 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Parse only, no write")
 
     args = parser.parse_args()
+    if args.bootstrap_samples:
+        return cmd_bootstrap(args)
     if args.init:
         return cmd_init(args)
     if args.list:

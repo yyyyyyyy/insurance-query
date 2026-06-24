@@ -132,9 +132,14 @@ def _apply_evidence_found(state: RuntimeState, event: Event) -> None:
         )
     )
 
-    for step in state.plan:
-        if step.tool_name == tool_name and step.status == "running":
-            step.status = "completed"
+    step_id = event.payload.get("step_id")
+    for plan_step in state.plan:
+        if step_id is not None:
+            if plan_step.step_id == step_id and plan_step.status == "running":
+                plan_step.status = "completed"
+                break
+        elif plan_step.tool_name == tool_name and plan_step.status == "running":
+            plan_step.status = "completed"
             break
 
     if all(s.status == "completed" for s in state.plan):

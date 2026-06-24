@@ -1,8 +1,8 @@
 {
   "meta": {
     "version": "1.0",
-    "updated": "2026-06-23T10:00:41Z",
-    "total": 20
+    "updated": "2026-06-24T05:44:27Z",
+    "total": 30
   },
   "documents": [
     {
@@ -10,180 +10,360 @@
       "document_id": "DOC_REG001",
       "title": "健康保险管理办法",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG001",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2019-12/04/content_5458542.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG002_重大疾病保险疾病定义使用规范(2020修订版).txt",
       "document_id": "DOC_REG002",
       "title": "重大疾病保险疾病定义使用规范(2020修订版)",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG002",
-      "source_url": "http://www.iachina.cn/art/2020/11/5/art_22_104708.html",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG003_中华人民共和国保险法(2015修正).pdf",
       "document_id": "DOC_REG003",
       "title": "中华人民共和国保险法(2015修正)",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG003",
-      "source_url": "https://www.nfra.gov.cn/chinese/docfile/2025/ca8d8237bdf746e9a3bff26a3bf2af39.pdf",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG004_互联网保险业务监管办法.txt",
       "document_id": "DOC_REG004",
       "title": "互联网保险业务监管办法",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG004",
-      "source_url": "https://www.gov.cn/zhengce/2020-12/14/content_5725858.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG005_保险销售行为管理办法.txt",
       "document_id": "DOC_REG005",
       "title": "保险销售行为管理办法",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG005",
-      "source_url": "https://jrj.beijing.gov.cn/jrgzdt/202310/t20231008_3271571.html",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG006_保险公司偿付能力管理规定.pdf",
       "document_id": "DOC_REG006",
       "title": "保险公司偿付能力管理规定",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG006",
-      "source_url": "https://www.nfra.gov.cn/chinese/docfile/2020/a3f08f896a4e49c498810c3853a33d44.pdf",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG007_关于规范短期健康保险业务有关问题的通知.txt",
       "document_id": "DOC_REG007",
       "title": "关于规范短期健康保险业务有关问题的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG007",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2021-01/12/content_5579193.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG008_关于长期医疗保险产品费率调整有关问题的通知.txt",
       "document_id": "DOC_REG008",
       "title": "关于长期医疗保险产品费率调整有关问题的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG008",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2020-04/03/content_5498878.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG009_关于规范保险公司城市定制型商业医疗保险业务的通知.txt",
       "document_id": "DOC_REG009",
       "title": "关于规范保险公司城市定制型商业医疗保险业务的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG009",
-      "source_url": "https://www.nfra.gov.cn/cn/view/pages/governmentDetail.html?docId=971285&generaltype=1&itemId=861",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG010_保险公司管理规定.txt",
       "document_id": "DOC_REG010",
       "title": "保险公司管理规定",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG010",
-      "source_url": "https://www.gov.cn/gongbao/content/2010/content_1585443.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG011_关于规范人身保险产品开发设计行为的通知(134号文).txt",
       "document_id": "DOC_REG011",
       "title": "关于规范人身保险产品开发设计行为的通知(134号文)",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG011",
-      "source_url": "https://www.nfra.gov.cn/cn/view/pages/ItemDetail.html?docId=372709&generaltype=0&itemId=925",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG012_关于进一步规范保险理赔服务有关事项的通知.txt",
       "document_id": "DOC_REG012",
       "title": "关于进一步规范保险理赔服务有关事项的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG012",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2018-12/31/content_5451131.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG013_关于加强金融消费者权益保护工作的指导意见.txt",
       "document_id": "DOC_REG013",
       "title": "关于加强金融消费者权益保护工作的指导意见",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG013",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2015-11/13/content_10289.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG014_银行保险机构消费者权益保护管理办法.txt",
       "document_id": "DOC_REG014",
       "title": "银行保险机构消费者权益保护管理办法",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG014",
-      "source_url": "https://www.gov.cn/zhengce/202310/content_6908481.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG015_关于扩大商业健康保险个人所得税优惠政策适用产品范围的通知.txt",
       "document_id": "DOC_REG015",
       "title": "关于扩大商业健康保险个人所得税优惠政策适用产品范围的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG015",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/202307/content_6890400.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG016_关于规范意外伤害保险经营有关问题的通知.txt",
       "document_id": "DOC_REG016",
       "title": "关于规范意外伤害保险经营有关问题的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG016",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2021-10/15/content_5642766.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG017_保险保障基金管理办法.txt",
       "document_id": "DOC_REG017",
       "title": "保险保障基金管理办法",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG017",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2022-11/14/content_5726811.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG018_关于规范健康保险委托管理业务有关事项的通知.txt",
       "document_id": "DOC_REG018",
       "title": "关于规范健康保险委托管理业务有关事项的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG018",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2020-03/26/content_5495814.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG019_关于实施保险公司偿付能力监管规则(Ⅱ)的通知.txt",
       "document_id": "DOC_REG019",
       "title": "关于实施保险公司偿付能力监管规则(Ⅱ)的通知",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG019",
-      "source_url": "https://www.gov.cn/zhengce/202412/content_6993886.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
     },
     {
       "file": "documents/REG020_保险资产负债管理监管规则.txt",
       "document_id": "DOC_REG020",
       "title": "保险资产负债管理监管规则",
       "document_type": "regulation",
+      "product_id": null,
       "regulation_id": "REG020",
-      "source_url": "https://www.gov.cn/zhengce/zhengceku/2019-12/03/content_5457841.htm",
-      "enabled": true
+      "enabled": true,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": ""
+    },
+    {
+      "file": "documents/REG021_个人税收递延型商业养老保险业务管理暂行办法.txt",
+      "document_id": "DOC_REG021",
+      "title": "个人税收递延型商业养老保险业务管理暂行办法",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG021",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG022_关于规范保险公司参与长期护理保险制度试点服务的通知.txt",
+      "document_id": "DOC_REG022",
+      "title": "关于规范保险公司参与长期护理保险制度试点服务的通知",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG022",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG023_关于规范银行代理保险业务的通知.txt",
+      "document_id": "DOC_REG023",
+      "title": "关于规范银行代理保险业务的通知",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG023",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG024_关于推进商业健康保险高质量发展的指导意见.txt",
+      "document_id": "DOC_REG024",
+      "title": "关于推进商业健康保险高质量发展的指导意见",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG024",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG025_保险公司城乡居民大病保险业务管理办法.txt",
+      "document_id": "DOC_REG025",
+      "title": "保险公司城乡居民大病保险业务管理办法",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG025",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG026_关于规范人身保险公司产品开发设计行为的通知(2023).txt",
+      "document_id": "DOC_REG026",
+      "title": "关于规范人身保险公司产品开发设计行为的通知(2023)",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG026",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG027_健康保险管理相关通知(2024).txt",
+      "document_id": "DOC_REG027",
+      "title": "健康保险管理相关通知(2024)",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG027",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG028_关于保险公司开展老年人住房反向抵押养老保险试点的指导意见.txt",
+      "document_id": "DOC_REG028",
+      "title": "关于保险公司开展老年人住房反向抵押养老保险试点的指导意见",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG028",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG029_保险公司承办城乡居民大病保险业务有关事项的通知.txt",
+      "document_id": "DOC_REG029",
+      "title": "保险公司承办城乡居民大病保险业务有关事项的通知",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG029",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
+    },
+    {
+      "file": "documents/REG030_保险专业代理机构监管规定.txt",
+      "document_id": "DOC_REG030",
+      "title": "保险专业代理机构监管规定",
+      "document_type": "regulation",
+      "product_id": null,
+      "regulation_id": "REG030",
+      "enabled": false,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "notes": "https://www.nfra.gov.cn"
     }
   ]
 }

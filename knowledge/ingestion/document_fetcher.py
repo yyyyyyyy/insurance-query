@@ -153,8 +153,10 @@ def is_host_private(host: str) -> bool:
             ip = ipaddress.ip_address(addr)
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
                 return True
-    except (socket.gaierror, ValueError):
-        return False
+    except socket.gaierror as exc:
+        raise ValueError(f"DNS resolution failed for host: {host}") from exc
+    except ValueError:
+        raise
     return False
 
 

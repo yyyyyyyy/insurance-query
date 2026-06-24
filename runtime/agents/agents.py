@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from runtime.agents.bus import BaseAgent, AgentMessage, AgentContext, AgentStatus
 from runtime.llm.plugin import classify_intent_auto, generate_plan_auto
@@ -157,6 +157,32 @@ class ToolAgent(BaseAgent):
         self.dispatcher = dispatcher or ToolDispatcher(create_default_registry())
         self.async_exec = async_exec or create_default_executor()
 
+    @staticmethod
+    def _plan_layers(plan: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+        if not plan:
+            return []
+        if not any(step.get("depends_on") for step in plan):
+            return [plan]
+        completed: set = set()
+        remaining = list(plan)
+        layers: List[List[Dict[str, Any]]] = []
+        while remaining:
+            layer = [
+                s for s in remaining
+                if all(dep in completed for dep in s.get("depends_on", []))
+            ]
+            if not layer:
+                layer = remaining
+                remaining = []
+            else:
+                remaining = [s for s in remaining if s not in layer]
+            layers.append(layer)
+            for step in layer:
+                sid = step.get("step_id")
+                if sid is not None:
+                    completed.add(sid)
+        return layers
+
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
         self._set_ctx_status(ctx, AgentStatus.RUNNING)
         try:
@@ -164,33 +190,35 @@ class ToolAgent(BaseAgent):
             hints = msg.payload.get("retrieval_context", [])
             tool_results = {}
             memory_facts_written: Dict[str, Any] = {}
-            parallel_calls = []
-            for step in plan:
-                tool_name = step.get("tool_name", "")
-                params = dict(step.get("input_params", {}))
-                params["query"] = msg.payload.get("query", "")
-                if hints:
-                    params["_retrieval_hints"] = hints
-                parallel_calls.append((tool_name, params))
 
-            async_results = (
-                self.async_exec.execute_parallel(parallel_calls, self.dispatcher.dispatch)
-                if parallel_calls else []
-            )
+            for layer in self._plan_layers(plan):
+                parallel_calls = []
+                for step in layer:
+                    tool_name = step.get("tool_name", "")
+                    params = dict(step.get("input_params", {}))
+                    params["query"] = msg.payload.get("query", "")
+                    if hints:
+                        params["_retrieval_hints"] = hints
+                    parallel_calls.append((tool_name, params))
 
-            for async_result in async_results:
-                tool_name = async_result.tool_name
-                result = async_result
-                tool_results[tool_name] = result
-                if result.success and result.result:
-                    facts = extract_facts_from_tool(tool_name, result.result.data)
-                    ctx.memory_facts = merge_facts(ctx.memory_facts, facts)
-                    for f in facts:
-                        memory_facts_written[f.key] = f.to_dict()
-                if not result.success:
-                    ctx.failure_recovery_path.append(
-                        f"tool:{tool_name}:{result.status.value}",
-                    )
+                async_results = (
+                    self.async_exec.execute_parallel(parallel_calls, self.dispatcher.dispatch)
+                    if parallel_calls else []
+                )
+
+                for async_result in async_results:
+                    tool_name = async_result.tool_name
+                    result = async_result
+                    tool_results[tool_name] = result
+                    if result.success and result.result:
+                        facts = extract_facts_from_tool(tool_name, result.result.data)
+                        ctx.memory_facts = merge_facts(ctx.memory_facts, facts)
+                        for f in facts:
+                            memory_facts_written[f.key] = f.to_dict()
+                    if not result.success:
+                        ctx.failure_recovery_path.append(
+                            f"tool:{tool_name}:{result.status.value}",
+                        )
 
             self._record_success(ctx)
             return AgentMessage(
@@ -282,16 +310,27 @@ class SupervisorAgent(BaseAgent):
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
         self._set_ctx_status(ctx, AgentStatus.RUNNING)
         health: Dict[str, Any] = {"overall": "healthy", "issues": []}
+        recovery_actions: List[str] = []
         if ctx:
             for aname, astatus in ctx.agent_statuses.items():
                 if isinstance(astatus, AgentStatus) and astatus == AgentStatus.FAILED:
                     health["issues"].append(f"Agent {aname} failed")
+                    if aname == "planner":
+                        recovery_actions.append("retry_template_plan")
+            if ctx.agent_statuses.get("planner") == AgentStatus.FAILED:
+                from runtime.engine.planner import generate_plan
+                recovery_actions.append("fallback_general_inquiry_plan")
+                health["fallback_plan"] = generate_plan(
+                    ctx.query, {"intent": "general_inquiry", "entities": []},
+                )
             health["degraded"] = ctx.degraded_mode
             if len(ctx.failure_recovery_path) > 2:
                 health["overall"] = "degrading"
+            if health["issues"]:
+                health["overall"] = "degraded"
             self._record_success(ctx)
         return AgentMessage(
             str(uuid.uuid4()), "supervisor", "orchestrator", "result",
-            {"health": health, "recovery_actions": []},
+            {"health": health, "recovery_actions": recovery_actions},
             trace_id=msg.trace_id,
         )

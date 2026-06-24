@@ -311,6 +311,12 @@ class TestEligibilityCheckTool:
         r = t.run({"product_id": "P012", "age": 15})
         assert r.data["eligible"] is False
 
+    def test_pre_existing_rejected(self):
+        t = EligibilityCheckTool()
+        r = t.run({"product_id": "P001", "age": 30, "has_pre_existing": True})
+        assert r.success
+        assert r.data["eligible"] is False
+
     def test_unknown_product(self):
         t = EligibilityCheckTool()
         r = t.run({"product_id": "P999", "age": 30})

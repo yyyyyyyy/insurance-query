@@ -197,8 +197,9 @@ class OntologyGraph:
                         continue
                     next_frontier.add(neighbor)
                     visited.add(neighbor)
-            if not frontier:
+            if not next_frontier:
                 break
+            frontier = next_frontier
         result = [self._entities[eid] for eid in (visited - seed_set) if eid in self._entities]
         return result[:max_results]
 
@@ -213,13 +214,13 @@ class OntologyGraph:
             for node in frontier:
                 nodes.add(node)
                 for _, v in self._graph.out_edges(node):
-                    edges.append({"source":node,"target":v,
-                                  "type":self._graph.edges[node,v]["relation_type"]})
+                    rel_type = self._graph.edges[node, v].get("relation_type", "")
+                    edges.append({"source": node, "target": v, "type": rel_type})
                     if v not in nodes:
                         nf.add(v)
                 for u, _ in self._graph.in_edges(node):
-                    edges.append({"source":u,"target":node,
-                                  "type":self._graph.edges[u,node]["relation_type"]})
+                    rel_type = self._graph.edges[u, node].get("relation_type", "")
+                    edges.append({"source": u, "target": node, "type": rel_type})
                     if u not in nodes:
                         nf.add(u)
             frontier = nf

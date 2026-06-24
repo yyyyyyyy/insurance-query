@@ -56,7 +56,18 @@ class ProcessStateMachine(ABC):
         self.initial_state = graph.get("initial_state", "idle")
         self.terminal_states = set(graph.get("terminal_states", []))
         self._transitions = self._index_transitions(graph.get("transitions", []))
+        self._state_ids = {s.get("id") for s in graph.get("states", []) if s.get("id")}
         self._decisions = {d["id"]: d for d in graph.get("decisions", [])}
+
+    def _resolve_next_state(self, next_state: str, current: str) -> str:
+        if next_state in self._state_ids:
+            return next_state
+        if "→" in next_state:
+            for part in next_state.split("→"):
+                part = part.strip()
+                if part in self._state_ids:
+                    return part
+        return current
 
     @staticmethod
     def _index_transitions(transitions: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -91,7 +102,7 @@ class ProcessStateMachine(ABC):
             if decision:
                 yes = self.evaluate_decision(decision["id"], current, ctx)
                 branch = "yes" if yes else "no"
-                next_state = decision.get(branch, current)
+                next_state = self._resolve_next_state(decision.get(branch, current), current)
                 decisions_log.append({
                     "decision_id": decision["id"],
                     "state": current,

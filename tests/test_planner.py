@@ -110,3 +110,10 @@ class TestPlanGeneration:
         plan2 = generate_plan("test", intent)
         plan1[0]["description"] = "modified"
         assert plan2[0]["description"] != "modified", "Plan should be a deep copy, not a reference"
+
+    def test_plan_input_params_do_not_mutate_template(self):
+        intent = {"intent": "product_comparison", "confidence": 0.9, "entities": []}
+        plan = generate_plan("test", intent)
+        original_ids = list(PLAN_TEMPLATES["product_comparison"][2]["input_params"]["product_ids"])
+        plan[2]["input_params"]["product_ids"] = ["P999", "P998"]
+        assert PLAN_TEMPLATES["product_comparison"][2]["input_params"]["product_ids"] == original_ids

@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from runtime.config.constants import (
+    EVIDENCE_SCORE_HYBRID_DEFAULT,
+    EVIDENCE_SCORE_MEMORY,
+    EVIDENCE_SCORE_PROCESS,
+    EVIDENCE_SCORE_RULE,
+    EVIDENCE_SCORE_TOOL_DEFAULT,
+)
 from runtime.evidence.canonical import CanonicalEvidence, make_canonical_id
 from runtime.evidence.contract import SourceType
 
@@ -33,7 +40,7 @@ def tool_evidence_to_candidates(
                 canonical_id=cid,
                 source="tool",
                 stage="candidate",
-                relevance_score=_evidence_score(ev, 0.6),
+                relevance_score=_evidence_score(ev, EVIDENCE_SCORE_TOOL_DEFAULT),
                 payload=payload,
                 provenance={"tool_name": tool_name, "rank": i},
             )
@@ -46,7 +53,7 @@ def hybrid_chunks_to_candidates(chunks: List[Dict[str, Any]]) -> List[CanonicalE
     for i, ch in enumerate(chunks):
         chunk_id = ch.get("chunk_id", f"hybrid-{i}")
         cid = make_canonical_id("hybrid", chunk_id)
-        score = float(ch.get("score", 0.5))
+        score = float(ch.get("score", EVIDENCE_SCORE_HYBRID_DEFAULT))
         payload = {
             "document_id": ch.get("document_id", ""),
             "chunk_id": chunk_id,
@@ -84,7 +91,7 @@ def rules_to_candidates(matched_decisions: List[Dict[str, Any]]) -> List[Canonic
                 canonical_id=cid,
                 source="rule",
                 stage="candidate",
-                relevance_score=0.95,
+                relevance_score=EVIDENCE_SCORE_RULE,
                 payload={
                     "rule_id": rule_id,
                     "decision": d.get("decision", ""),
@@ -109,7 +116,7 @@ def process_to_candidates(process_result: Optional[Dict[str, Any]]) -> List[Cano
             canonical_id=cid,
             source="process",
             stage="candidate",
-            relevance_score=0.9,
+            relevance_score=EVIDENCE_SCORE_PROCESS,
             payload={
                 "process_name": pname,
                 "terminal_state": terminal,
@@ -133,7 +140,7 @@ def memory_to_candidates(memory_context: Dict[str, Any]) -> List[CanonicalEviden
                 canonical_id=cid,
                 source="memory",
                 stage="candidate",
-                relevance_score=0.3,
+                relevance_score=EVIDENCE_SCORE_MEMORY,
                 payload={"content": prod, "type": "previous_product"},
                 provenance={"index": i},
             )

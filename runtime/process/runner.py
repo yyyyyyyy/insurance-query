@@ -12,7 +12,7 @@ from runtime.process.underwriting_machine import UnderwritingStateMachine
 class ProcessRunner:
     """Select and execute process state machines by intent."""
 
-    CLAIM_INTENTS = frozenset({"claim_process", "coverage_question"})
+    CLAIM_INTENTS = frozenset({"claim_process"})
     UW_INTENTS = frozenset({"eligibility_check"})
 
     def __init__(self):

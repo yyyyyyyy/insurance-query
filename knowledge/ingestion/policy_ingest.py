@@ -202,13 +202,191 @@ def _resolve_file_path(entry: ManifestEntry, base_dir: Optional[Path] = None) ->
                 if candidate.is_file() and candidate.suffix.lower() in (".txt", ".pdf"):
                     return candidate.resolve()
     if base_dir is None:
-        sample_path = POLICY_DOCS_DIR / "samples" / entry.file
-        if sample_path.exists():
-            return sample_path
-        sample_path = POLICY_DOCS_DIR / "samples" / Path(entry.file).name
-        if sample_path.exists():
-            return sample_path
+        stem = Path(entry.file).stem
+        for candidate in (
+            POLICY_DOCS_DIR / "samples" / entry.file,
+            POLICY_DOCS_DIR / "samples" / Path(entry.file).name,
+            POLICY_DOCS_DIR / "samples" / f"{stem}.txt",
+            POLICY_DOCS_DIR / entry.file,
+        ):
+            if candidate.exists():
+                return candidate.resolve()
     return path
+
+
+def _document_to_plaintext(doc: Dict[str, Any]) -> str:
+    """Flatten document chunks into ingestible plain text."""
+    lines: List[str] = []
+    for chunk in doc.get("chunks", []):
+        clause = str(chunk.get("clause", "")).strip()
+        content = str(chunk.get("content", "")).strip()
+        if clause and content:
+            lines.append(f"{clause}\n{content}")
+        elif content:
+            lines.append(content)
+    return "\n\n".join(lines)
+
+
+DEV_CLAIM_SAMPLE_FILE = "claim_procedure_dev_sample.txt"
+
+
+def _catalog_product_summary(product: Dict[str, Any]) -> str:
+    """Synthesize a structured clause summary from catalog fields (dev bootstrap)."""
+    lines = [
+        f"《{product.get('name', product.get('product_id', ''))}》条款摘要",
+        f"产品编号：{product.get('product_id', '')}",
+        f"保险公司：{product.get('company', '')}",
+        f"产品类别：{product.get('category', '')}",
+    ]
+    if product.get("sub_category"):
+        lines.append(f"子类别：{product['sub_category']}")
+    if product.get("guaranteed_renewal"):
+        lines.append(f"续保规则：{product['guaranteed_renewal']}")
+    if product.get("deductible"):
+        lines.append(f"免赔额：{product['deductible']}")
+    if product.get("waiting_period"):
+        lines.append(f"等待期：{product['waiting_period']}")
+    if product.get("min_age") is not None or product.get("max_age") is not None:
+        lines.append(f"投保年龄：{product.get('min_age', 0)}-{product.get('max_age', '?')}岁")
+    coverage = product.get("coverage") or {}
+    if coverage:
+        lines.append("保障责任：")
+        for k, v in coverage.items():
+            lines.append(f"  - {k}: {v}")
+    exclusions = product.get("exclusions") or []
+    if exclusions:
+        lines.append(f"责任免除：{', '.join(exclusions)}")
+    premium = product.get("premium_reference") or {}
+    if premium:
+        lines.append("参考保费（元/年）：")
+        for age_band, price in premium.items():
+            lines.append(f"  - {age_band}: {price}")
+    elig = product.get("eligibility") or {}
+    if elig:
+        lines.append("投保须知：")
+        for k, v in elig.items():
+            lines.append(f"  - {k}: {v}")
+    lines.append(
+        "\n【说明】本文件由 catalog.json 自动生成的开发用条款摘要，"
+        "非完整 PDF 条款；生产环境请替换为官网下载的正式条款文档。"
+    )
+    return "\n".join(lines)
+
+
+def bootstrap_dev_samples(*, overwrite: bool = False) -> List[Path]:
+    """Write dev ingest samples: document_data excerpts + catalog summaries for all products."""
+    from runtime.tools.document_data import DOCUMENT_STORE
+
+    samples_dir = POLICY_DOCS_DIR / "samples"
+    samples_dir.mkdir(parents=True, exist_ok=True)
+    manifest_entries = load_manifest()
+    by_product = {e.product_id: e for e in manifest_entries if e.product_id}
+    written: List[Path] = []
+    doc_by_product = {d.get("product_id"): d for d in DOCUMENT_STORE if d.get("product_id")}
+
+    for doc in DOCUMENT_STORE:
+        pid = doc.get("product_id")
+        if not pid or pid not in by_product:
+            continue
+        entry = by_product[pid]
+        out_path = samples_dir / f"{Path(entry.file).stem}.txt"
+        if out_path.exists() and not overwrite:
+            written.append(out_path)
+            continue
+        out_path.write_text(_document_to_plaintext(doc), encoding="utf-8")
+        written.append(out_path)
+        logger.info("Wrote dev sample from document_data: %s", out_path.name)
+
+    catalog_path = ROOT / "knowledge_pack" / "products" / "catalog.json"
+    if catalog_path.exists():
+        with open(catalog_path, encoding="utf-8") as f:
+            products = json.load(f).get("products", [])
+        for product in products:
+            pid = product["product_id"]
+            if pid in doc_by_product:
+                continue
+            entry = by_product.get(pid)
+            if not entry:
+                continue
+            out_path = samples_dir / f"{Path(entry.file).stem}.txt"
+            if out_path.exists() and not overwrite:
+                if out_path not in written:
+                    written.append(out_path)
+                continue
+            out_path.write_text(_catalog_product_summary(product), encoding="utf-8")
+            written.append(out_path)
+            logger.info("Wrote catalog summary sample: %s", out_path.name)
+
+    claim_doc = next(
+        (d for d in DOCUMENT_STORE if d.get("document_type") == "claim_procedure"),
+        None,
+    )
+    if claim_doc:
+        claim_path = samples_dir / DEV_CLAIM_SAMPLE_FILE
+        if overwrite or not claim_path.exists():
+            claim_path.write_text(_document_to_plaintext(claim_doc), encoding="utf-8")
+        if claim_path not in written:
+            written.append(claim_path)
+        if not any(e.file == DEV_CLAIM_SAMPLE_FILE for e in manifest_entries):
+            manifest_entries.append(ManifestEntry(
+                file=DEV_CLAIM_SAMPLE_FILE,
+                document_id="DOC_CLAIM_PROC",
+                title=str(claim_doc.get("title", "健康保险理赔流程通用指南")),
+                document_type="claim_procedure",
+                enabled=True,
+                notes="Dev sample from document_data; replace with官网条款 when available",
+            ))
+            save_manifest(manifest_entries)
+            logger.info("Added claim procedure entry to product manifest")
+
+    return written
+
+
+def sync_regulation_manifest_from_catalog() -> int:
+    """Add catalog regulations missing from manifest as disabled entries. Returns count added."""
+    from knowledge.ingestion.naming import regulation_output_filename
+
+    catalog_path = ROOT / "knowledge_pack" / "regulations" / "catalog.json"
+    if not catalog_path.exists():
+        return 0
+    with open(catalog_path, encoding="utf-8") as f:
+        regulations = json.load(f).get("regulations", [])
+
+    entries = load_regulation_manifest()
+    existing = {e.regulation_id for e in entries if e.regulation_id}
+    added = 0
+    for reg in regulations:
+        rid = reg.get("regulation_id")
+        if not rid or rid in existing:
+            continue
+        filename = f"documents/{regulation_output_filename(reg)}"
+        entries.append(ManifestEntry(
+            file=filename,
+            document_id=f"DOC_{rid}",
+            title=reg.get("title", rid),
+            document_type="regulation",
+            regulation_id=rid,
+            enabled=False,
+            notes=reg.get("source_url", "catalog only; document not yet fetched"),
+        ))
+        existing.add(rid)
+        added += 1
+
+    if added:
+        manifest_path = REG_MANIFEST_PATH
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "meta": {
+                "version": "1.0",
+                "updated": _now_iso(),
+                "total": len(entries),
+            },
+            "documents": [e.to_dict() for e in entries],
+        }
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        logger.info("Added %d regulation manifest entries from catalog", added)
+    return added
 
 
 def load_regulation_manifest(path: Optional[Path] = None) -> List[ManifestEntry]:

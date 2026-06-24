@@ -73,7 +73,7 @@ class ProductSearchTool(BaseTool[ProductSearchInput, ProductSearchOutput]):
                     for r in results]
         status = ToolStatus.SUCCESS if results else ToolStatus.EMPTY
         return ToolResult(tool_name=self.name, status=status,
-                         data={"products": results, "total_found": len(PRODUCT_CATALOG)},
+                         data={"products": results, "total_found": len(results)},
                          evidence=evidence)
 
 
@@ -89,6 +89,12 @@ class DocumentSearchOutput(BaseModel):
 
 
 class DocumentSearchTool(BaseTool[DocumentSearchInput, DocumentSearchOutput]):
+    def __init__(self, retriever=None):
+        self._retriever = retriever
+
+    def set_retriever(self, retriever) -> None:
+        self._retriever = retriever
+
     @property
     def name(self) -> str: return "document_search"
     @property
@@ -99,7 +105,38 @@ class DocumentSearchTool(BaseTool[DocumentSearchInput, DocumentSearchOutput]):
     def output_schema(self): return DocumentSearchOutput
 
     def execute(self, input_data: DocumentSearchInput) -> ToolResult:
-        query = input_data.query.lower().strip()
+        query = input_data.query.strip()
+        if self._retriever and query:
+            doc_type = input_data.document_type or None
+            doc_types = [doc_type] if doc_type else None
+            hits = self._retriever.retrieve_evidence(
+                query, top_k=input_data.top_k, document_types=doc_types,
+            )
+            chunks = []
+            matched_docs = set()
+            for h in hits:
+                chunks.append({
+                    "document_id": h.get("document_id", ""),
+                    "document_title": h.get("document_title", ""),
+                    "chunk_id": h.get("chunk_id", ""),
+                    "clause": h.get("clause", ""),
+                    "content": h.get("content", ""),
+                    "page": h.get("page"),
+                    "score": h.get("score", 0),
+                })
+                matched_docs.add(h.get("document_id", ""))
+            evidence = [
+                make_evidence(c["document_id"], c["chunk_id"], c["content"][:200],
+                              SourceType.POLICY_CLAUSE, clause=c.get("clause", ""),
+                              document_title=c.get("document_title", ""), page=c.get("page"))
+                for c in chunks
+            ]
+            status = ToolStatus.SUCCESS if chunks else ToolStatus.EMPTY
+            return ToolResult(tool_name=self.name, status=status,
+                              data={"chunks": chunks, "total_documents": len(matched_docs)},
+                              evidence=evidence)
+
+        query = query.lower()
         tokens = _tokenize_chinese(query)
         chunks = []
         matched_docs = set()
@@ -140,6 +177,12 @@ class RegulationSearchOutput(BaseModel):
 
 
 class RegulationSearchTool(BaseTool[RegulationSearchInput, RegulationSearchOutput]):
+    def __init__(self, retriever=None):
+        self._retriever = retriever
+
+    def set_retriever(self, retriever) -> None:
+        self._retriever = retriever
+
     @property
     def name(self) -> str: return "regulation_search"
     @property
@@ -150,7 +193,40 @@ class RegulationSearchTool(BaseTool[RegulationSearchInput, RegulationSearchOutpu
     def output_schema(self): return RegulationSearchOutput
 
     def execute(self, input_data: RegulationSearchInput) -> ToolResult:
-        query = input_data.query.lower().strip()
+        query = input_data.query.strip()
+        if self._retriever and query:
+            hits = self._retriever.retrieve_evidence(
+                query, top_k=input_data.top_k, document_types=["regulation"],
+            )
+            by_doc: Dict[str, Dict[str, Any]] = {}
+            for h in hits:
+                doc_id = h.get("document_id", "")
+                if doc_id not in by_doc:
+                    by_doc[doc_id] = {
+                        "document_id": doc_id,
+                        "title": h.get("document_title", doc_id),
+                        "chunks": [],
+                    }
+                by_doc[doc_id]["chunks"].append({
+                    "chunk_id": h.get("chunk_id", ""),
+                    "clause": h.get("clause", ""),
+                    "content": h.get("content", ""),
+                    "page": h.get("page"),
+                })
+            results = list(by_doc.values())[:input_data.top_k]
+            evidence = []
+            for r in results:
+                for c in r["chunks"]:
+                    evidence.append(make_evidence(
+                        r["document_id"], c["chunk_id"], c["content"][:200],
+                        SourceType.REGULATION, clause=c.get("clause", ""),
+                        document_title=r["title"], page=c.get("page"),
+                    ))
+            status = ToolStatus.SUCCESS if results else ToolStatus.EMPTY
+            return ToolResult(tool_name=self.name, status=status,
+                              data={"regulations": results}, evidence=evidence)
+
+        query = query.lower()
         tokens = _tokenize_chinese(query)
         results = []
         for doc in DOCUMENT_STORE:

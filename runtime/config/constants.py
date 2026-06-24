@@ -1,0 +1,12 @@
+"""Runtime-wide constants (retrieval, evidence, observability)."""
+
+RETRIEVAL_TOP_K = 5
+EVIDENCE_CONTENT_MAX = 500
+AGENT_BUS_MAX_LOG = 1000
+
+# Canonical evidence adapter default scores
+EVIDENCE_SCORE_RULE = 0.95
+EVIDENCE_SCORE_PROCESS = 0.9
+EVIDENCE_SCORE_MEMORY = 0.3
+EVIDENCE_SCORE_TOOL_DEFAULT = 0.6
+EVIDENCE_SCORE_HYBRID_DEFAULT = 0.5

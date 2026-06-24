@@ -37,6 +37,20 @@ class ToolRegistry:
     def __contains__(self, name: str) -> bool:
         return name in self._tools
 
+    def wire_ontology(self, ontology) -> None:
+        """Inject shared OntologyGraph into graph tools."""
+        for name in ("entity_lookup", "relation_traversal"):
+            tool = self._tools.get(name)
+            if tool is not None and hasattr(tool, "set_ontology"):
+                tool.set_ontology(ontology)
+
+    def wire_retriever(self, retriever) -> None:
+        """Inject HybridRetriever into document/regulation search tools."""
+        for name in ("document_search", "regulation_search"):
+            tool = self._tools.get(name)
+            if tool is not None and hasattr(tool, "set_retriever"):
+                tool.set_retriever(retriever)
+
 
 class ToolDispatcher:
     """Central tool execution dispatcher.
@@ -72,7 +86,7 @@ class ToolDispatcher:
         return self.registry.list_tools()
 
 
-def create_default_registry() -> ToolRegistry:
+def create_default_registry(ontology=None, retriever=None) -> ToolRegistry:
     """Factory: create a ToolRegistry with all Sprint 2 tools registered."""
     from runtime.tools.retrieval import (
         DocumentSearchTool,
@@ -85,12 +99,12 @@ def create_default_registry() -> ToolRegistry:
 
     registry = ToolRegistry()
     registry.register(ProductSearchTool())
-    registry.register(DocumentSearchTool())
-    registry.register(RegulationSearchTool())
+    registry.register(DocumentSearchTool(retriever))
+    registry.register(RegulationSearchTool(retriever))
     registry.register(AttributeExtractionTool())
     registry.register(ClauseParserTool())
     registry.register(CompareTool())
     registry.register(EligibilityCheckTool())
-    registry.register(EntityLookupTool())
-    registry.register(RelationTraversalTool())
+    registry.register(EntityLookupTool(ontology))
+    registry.register(RelationTraversalTool(ontology))
     return registry

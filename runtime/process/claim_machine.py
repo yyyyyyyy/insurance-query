@@ -36,8 +36,8 @@ class ClaimProcessStateMachine(ProcessStateMachine):
             return not ctx.has_reject_rule()
         if decision_id == "D_liability":
             doc_search = ctx.tool_results.get("document_search", {})
-            results = doc_search.get("results", [])
-            return len(results) > 0 or not ctx.has_reject_rule()
+            chunks = doc_search.get("chunks", doc_search.get("results", []))
+            return len(chunks) > 0 or not ctx.has_reject_rule()
         if decision_id == "D_exclusion":
             return ctx.has_reject_rule()
         if decision_id == "D_evaluate":

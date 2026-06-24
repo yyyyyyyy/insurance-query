@@ -39,7 +39,11 @@ def extract_facts_from_tool(tool_name: str, tool_data: Dict[str, Any]) -> List[M
     elif tool_name == "compare":
         comp = tool_data.get("comparison", {})
         products = comp.get("products", [])
-        ids = [p.get("product_id") for p in products if p.get("product_id")]
+        ids = [
+            p.get("id") or p.get("product_id")
+            for p in products
+            if p.get("id") or p.get("product_id")
+        ]
         if ids:
             facts.append(MemoryFact("last_compared_products", ids, tool_name, "comparison"))
         if products:
@@ -47,12 +51,15 @@ def extract_facts_from_tool(tool_name: str, tool_data: Dict[str, Any]) -> List[M
             facts.append(MemoryFact("last_compared_names", names, tool_name, "comparison"))
 
     elif tool_name == "attribute_extraction":
-        attrs = tool_data.get("attributes", {})
-        product_ids = tool_data.get("product_ids", [])
+        results = tool_data.get("results", {})
+        product_ids = list(results.keys()) if isinstance(results, dict) else tool_data.get("product_ids", [])
         if product_ids:
             facts.append(MemoryFact("last_product_ids", product_ids, tool_name, "attributes"))
-        for k, v in attrs.items():
-            facts.append(MemoryFact(f"attr:{k}", v, tool_name, "attribute"))
+        if isinstance(results, dict):
+            for pid, attrs in results.items():
+                if isinstance(attrs, dict):
+                    for k, v in attrs.items():
+                        facts.append(MemoryFact(f"attr:{pid}:{k}", v, tool_name, "attribute"))
 
     elif tool_name == "eligibility_check":
         result = tool_data.get("eligible")
