@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from knowledge.ingestion.pipeline import Chunk
 
@@ -79,6 +79,11 @@ class ChromaVectorStore:
     def enabled(self) -> bool:
         return self._enabled and self._collection is not None
 
+    def _require_collection(self):
+        if self._collection is None:
+            raise RuntimeError("ChromaDB collection is not initialized")
+        return self._collection
+
     def add_chunks(
         self,
         chunks: List[Chunk],
@@ -91,6 +96,7 @@ class ChromaVectorStore:
         if not self.enabled or not chunks:
             return 0
 
+        collection = self._require_collection()
         ids = [c.chunk_id for c in chunks]
         documents = [c.content for c in chunks]
         metadatas = []
@@ -107,13 +113,13 @@ class ChromaVectorStore:
             metadatas.append(meta)
 
         try:
-            self._collection.upsert(
+            collection.upsert(
                 ids=ids,
                 documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
+                embeddings=cast(Any, embeddings),
+                metadatas=cast(Any, metadatas),
             )
-            self._chunk_count = self._collection.count()
+            self._chunk_count = collection.count()
             logger.debug("Upserted %d chunks to ChromaDB", len(chunks))
             return len(chunks)
         except Exception as exc:
@@ -121,13 +127,14 @@ class ChromaVectorStore:
                 logger.warning("ChromaDB dimension mismatch, resetting collection: %s", exc)
                 self._reset_collection()
                 try:
-                    self._collection.upsert(
+                    collection = self._require_collection()
+                    collection.upsert(
                         ids=ids,
                         documents=documents,
-                        embeddings=embeddings,
-                        metadatas=metadatas,
+                        embeddings=cast(Any, embeddings),
+                        metadatas=cast(Any, metadatas),
                     )
-                    self._chunk_count = self._collection.count()
+                    self._chunk_count = collection.count()
                     return len(chunks)
                 except Exception as retry_exc:
                     logger.warning("ChromaDB upsert failed after reset: %s", retry_exc)
@@ -161,18 +168,23 @@ class ChromaVectorStore:
         if not self.enabled:
             return []
 
+        collection = self._require_collection()
         try:
-            results = self._collection.query(
-                query_embeddings=[query_embedding],
+            results = collection.query(
+                query_embeddings=cast(Any, [query_embedding]),
                 n_results=min(top_k, self._chunk_count),
                 where=where,
                 include=["metadatas", "distances"],
             )
-            items = []
-            if results["ids"] and results["ids"][0]:
-                for i, cid in enumerate(results["ids"][0]):
-                    dist = results["distances"][0][i] if results.get("distances") else 1.0
-                    meta = results["metadatas"][0][i] if results.get("metadatas") else None
+            items: List[Tuple[str, float, Optional[Dict[str, Any]]]] = []
+            ids_batch = results.get("ids") or []
+            if ids_batch and ids_batch[0]:
+                distances_batch = results.get("distances") or [[]]
+                metas_batch = results.get("metadatas") or [[]]
+                for i, cid in enumerate(ids_batch[0]):
+                    dist = distances_batch[0][i] if distances_batch and distances_batch[0] else 1.0
+                    meta_raw = metas_batch[0][i] if metas_batch and metas_batch[0] else None
+                    meta = cast(Optional[Dict[str, Any]], meta_raw)
                     score = 1.0 - min(float(dist), 1.0)  # Convert distance to similarity
                     items.append((cid, score, meta))
             return items
@@ -187,18 +199,18 @@ class ChromaVectorStore:
         """Retrieve all chunks for a document."""
         if not self.enabled:
             return []
+        collection = self._require_collection()
         try:
-            result = self._collection.get(
+            result = collection.get(
                 where={"document_id": document_id},
                 include=["documents", "metadatas"],
             )
+            ids = result.get("ids") or []
+            documents = result.get("documents") or []
+            metadatas = result.get("metadatas") or []
             return [
                 {"chunk_id": rid, "content": doc, "metadata": meta}
-                for rid, doc, meta in zip(
-                    result.get("ids", []),
-                    result.get("documents", []),
-                    result.get("metadatas", []),
-                )
+                for rid, doc, meta in zip(ids, documents, metadatas)
             ]
         except Exception:
             return []
@@ -207,14 +219,15 @@ class ChromaVectorStore:
         """Delete all chunks belonging to a document."""
         if not self.enabled:
             return 0
+        collection = self._require_collection()
         try:
-            result = self._collection.get(
+            result = collection.get(
                 where={"document_id": document_id},
                 include=[],
             )
-            ids = result.get("ids", [])
+            ids = result.get("ids") or []
             if ids:
-                self._collection.delete(ids=ids)
+                collection.delete(ids=ids)
                 deleted = len(ids)
                 self._chunk_count -= deleted
                 return deleted
@@ -229,9 +242,10 @@ class ChromaVectorStore:
         """Clear all chunks from the collection."""
         if self.enabled:
             try:
-                all_ids = self._collection.get(include=[])["ids"]
+                collection = self._require_collection()
+                all_ids = collection.get(include=[])["ids"]
                 if all_ids:
-                    self._collection.delete(ids=all_ids)
+                    collection.delete(ids=all_ids)
                 self._chunk_count = 0
             except Exception:
                 pass

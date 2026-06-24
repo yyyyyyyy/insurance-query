@@ -60,7 +60,8 @@ class DeepSeekClient:
             raise LLMClientError(f"DeepSeek request failed: {exc}") from exc
 
         try:
-            return data["choices"][0]["message"]["content"].strip()
+            content = data["choices"][0]["message"]["content"]
+            return str(content).strip()
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMClientError(f"Unexpected DeepSeek response: {data}") from exc
 
@@ -70,7 +71,8 @@ class DeepSeekClient:
         if text.startswith("```"):
             text = re.sub(r"^```(?:json)?\s*", "", text)
             text = re.sub(r"\s*```$", "", text)
-        return json.loads(text)
+        parsed: Dict[str, Any] = json.loads(text)
+        return parsed
 
 
 def get_client() -> DeepSeekClient:

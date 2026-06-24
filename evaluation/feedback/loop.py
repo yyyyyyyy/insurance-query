@@ -27,7 +27,7 @@ class FeedbackSignal:
 class FeedbackLoop:
     def generate(self, eval_result: EvaluationResult,
                  hallucination: HallucinationReport) -> List[FeedbackSignal]:
-        signals = []
+        signals: List[FeedbackSignal] = []
         signals.extend(self._retrieval_feedback(eval_result))
         signals.extend(self._tool_routing_feedback(eval_result))
         signals.extend(self._answer_quality_feedback(eval_result, hallucination))
@@ -36,7 +36,7 @@ class FeedbackLoop:
         return signals
 
     def _retrieval_feedback(self, er: EvaluationResult) -> List[FeedbackSignal]:
-        signals = []
+        signals: List[FeedbackSignal] = []
         rdim = er.dimensions.get("retrieval")
         if not rdim:
             return signals
@@ -55,7 +55,7 @@ class FeedbackLoop:
         return signals
 
     def _tool_routing_feedback(self, er: EvaluationResult) -> List[FeedbackSignal]:
-        signals = []
+        signals: List[FeedbackSignal] = []
         tdim = er.dimensions.get("tool")
         if not tdim:
             return signals
@@ -69,7 +69,7 @@ class FeedbackLoop:
 
     def _answer_quality_feedback(self, er: EvaluationResult,
                                   hal: HallucinationReport) -> List[FeedbackSignal]:
-        signals = []
+        signals: List[FeedbackSignal] = []
         if hal.severity in ("HIGH", "MEDIUM"):
             signals.append(FeedbackSignal(
                 "evidence_quality",f"Hallucination detected: {hal.severity}",
@@ -87,7 +87,7 @@ class FeedbackLoop:
 
     def _ontology_feedback(self, er: EvaluationResult,
                            hal: HallucinationReport) -> List[FeedbackSignal]:
-        signals = []
+        signals: List[FeedbackSignal] = []
         onto_violations = [v for v in hal.violations if v.violation_type == "ontology_mismatch"]
         if onto_violations:
             signals.append(FeedbackSignal(
@@ -97,7 +97,7 @@ class FeedbackLoop:
         return signals
 
     def _efficiency_feedback(self, er: EvaluationResult) -> List[FeedbackSignal]:
-        signals = []
+        signals: List[FeedbackSignal] = []
         edim = er.dimensions.get("efficiency")
         if not edim:
             return signals

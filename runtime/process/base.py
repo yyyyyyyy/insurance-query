@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 
 @dataclass
@@ -117,7 +117,7 @@ class ProcessStateMachine(ABC):
     def _decision_at_state(self, state: str) -> Optional[Dict[str, Any]]:
         for d in self._decisions.values():
             if d.get("node") == state:
-                return d
+                return cast(Dict[str, Any], d)
         return None
 
     @abstractmethod
@@ -127,5 +127,5 @@ class ProcessStateMachine(ABC):
     def _outcome_label(self, terminal_state: str) -> str:
         for s in self.graph.get("states", []):
             if s.get("id") == terminal_state:
-                return s.get("label", terminal_state)
+                return str(s.get("label", terminal_state))
         return terminal_state

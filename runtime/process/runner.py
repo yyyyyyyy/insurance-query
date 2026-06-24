@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from runtime.process.base import ProcessContext, ProcessResult
 from runtime.process.claim_machine import ClaimProcessStateMachine
@@ -36,7 +36,7 @@ class ProcessRunner:
         )
 
         if intent in self.CLAIM_INTENTS:
-            return self.claim_machine.run_to_terminal(ctx)
+            return cast(Optional[ProcessResult], self.claim_machine.run_to_terminal(ctx))
         if intent in self.UW_INTENTS:
-            return self.underwriting_machine.run_to_terminal(ctx)
+            return cast(Optional[ProcessResult], self.underwriting_machine.run_to_terminal(ctx))
         return None

@@ -43,7 +43,7 @@ class EvalRunner:
         per_sample = []
         scores = []
         latencies = []
-        all_feedback = []
+        all_feedback: List[Dict[str, Any]] = []
         passed = 0
         failed = 0
 

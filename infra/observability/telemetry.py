@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 _OTEL_AVAILABLE = False
-_tracer = None
+_tracer: Any = None
 
 
 def init_tracer(service_name: str = "insurequery-api"):

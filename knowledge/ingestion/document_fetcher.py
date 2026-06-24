@@ -409,7 +409,7 @@ class DocumentFetcher:
             manifest_entry.get("file")
             if manifest_entry
             else product_output_filename(product)
-        )
+        ) or product_output_filename(product)
         out_path = POLICY_DOCS_DIR / out_file
 
         if out_path.exists() and not force:

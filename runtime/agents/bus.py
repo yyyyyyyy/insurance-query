@@ -147,7 +147,8 @@ class AgentBus:
                 "error",
                 {"error": f"Agent not found: {msg.recipient}"},
             )
-        return agent.handle(msg, ctx)
+        active_ctx = ctx or AgentContext(session_id="", query="")
+        return agent.handle(msg, active_ctx)
 
     def get_agent(self, name: str) -> Optional[BaseAgent]:
         return self._agents.get(name)

@@ -91,7 +91,7 @@ class BM25Scorer:
         self._avg_dl = sum(self._doc_lengths) / max(self._doc_count, 1)
         for text in texts:
             tokens = self._tokenize(text)
-            tf = defaultdict(int)
+            tf: Dict[str, int] = defaultdict(int)
             for t in tokens:
                 tf[t] += 1
             self._doc_term_freqs.append(dict(tf))

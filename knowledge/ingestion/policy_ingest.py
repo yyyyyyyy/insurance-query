@@ -457,7 +457,7 @@ def ingest_all(
         results.extend(reg_results)
         new_documents.extend(reg_docs)
 
-    report = {
+    report: Dict[str, Any] = {
         "summary": {
             "total": len(results),
             "success": sum(1 for r in results if r.status == "success"),

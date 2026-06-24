@@ -281,7 +281,7 @@ class SupervisorAgent(BaseAgent):
 
     def handle(self, msg: AgentMessage, ctx: AgentContext) -> AgentMessage:
         self._set_ctx_status(ctx, AgentStatus.RUNNING)
-        health = {"overall": "healthy", "issues": []}
+        health: Dict[str, Any] = {"overall": "healthy", "issues": []}
         if ctx:
             for aname, astatus in ctx.agent_statuses.items():
                 if isinstance(astatus, AgentStatus) and astatus == AgentStatus.FAILED:

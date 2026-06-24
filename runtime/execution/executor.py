@@ -84,7 +84,7 @@ class AsyncExecutor:
     def __init__(self, config: Optional[ExecutionConfig] = None):
         self.config = config or ExecutionConfig()
         self._executor = ThreadPoolExecutor(max_workers=self.config.max_workers)
-        self._execution_stats: Dict[str, Dict[str, int]] = {
+        self._execution_stats: Dict[str, int] = {
             "total": 0, "success": 0, "timeout": 0, "failed": 0, "retried": 0
         }
 

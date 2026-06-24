@@ -55,7 +55,9 @@ class TraceAwareCache:
     def get_entry_meta(self, store: str, key: str) -> Dict[str, Any]:
         """Metadata for a cache entry (for causal replay on CACHE_HIT)."""
         with self._lock:
-            e = self._stores.get(store, {}).get(key)
+            if store not in self._stores:
+                return {}
+            e = self._stores[store].get(key)
             if not e:
                 return {}
             return {

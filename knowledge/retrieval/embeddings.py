@@ -67,14 +67,20 @@ class SentenceTransformerEmbedding:
         """Encode a single text to embedding vector."""
         if not self.enabled:
             raise RuntimeError("SentenceTransformerEmbedding not available")
-        vec = self._model.encode(text, normalize_embeddings=True)
+        model = self._model
+        if model is None:
+            raise RuntimeError("SentenceTransformerEmbedding model not loaded")
+        vec = model.encode(text, normalize_embeddings=True)
         return np.array(vec, dtype=np.float64)
 
     def encode_batch(self, texts: List[str]) -> List[np.ndarray]:
         """Encode a batch of texts."""
         if not self.enabled:
             raise RuntimeError("SentenceTransformerEmbedding not available")
-        embeddings = self._model.encode(texts, normalize_embeddings=True)
+        model = self._model
+        if model is None:
+            raise RuntimeError("SentenceTransformerEmbedding model not loaded")
+        embeddings = model.encode(texts, normalize_embeddings=True)
         return [np.array(e, dtype=np.float64) for e in embeddings]
 
     def encode_as_list(self, text: str) -> List[float]:

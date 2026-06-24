@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 _KNOWLEDGE_PACK = Path(__file__).resolve().parents[2] / "knowledge_pack" / "process_models"
 
@@ -23,4 +23,4 @@ def load_process_graph(process_name: str) -> Dict[str, Any]:
     if not path or not path.is_file():
         raise FileNotFoundError(f"Process graph not found: {process_name}")
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))

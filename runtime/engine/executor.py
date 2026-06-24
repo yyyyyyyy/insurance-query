@@ -11,7 +11,7 @@ No LLM reasoning inside tools.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 MOCK_PRODUCT_DB = [
     {
@@ -203,7 +203,10 @@ def execute_compare(params: Dict[str, Any]) -> Dict[str, Any]:
 
 def execute_attribute_extraction(params: Dict[str, Any]) -> Dict[str, Any]:
     """Extract attributes from products (mock implementation)."""
-    attributes = params.get("attributes", [])
+    raw_attrs = params.get("attributes", [])
+    attributes: List[str] = (
+        [str(a) for a in raw_attrs] if isinstance(raw_attrs, list) else []
+    )
     product_refs = params.get("product_ids", ["P001"])
 
     results = {}
@@ -214,10 +217,14 @@ def execute_attribute_extraction(params: Dict[str, Any]) -> Dict[str, Any]:
             for attr in attributes:
                 if attr in product:
                     extracted[attr] = product[attr]
-                elif attr in product.get("coverage", {}):
-                    extracted[attr] = product["coverage"][attr]
-                elif attr in product.get("eligibility", {}):
-                    extracted[attr] = product["eligibility"][attr]
+                else:
+                    coverage = product.get("coverage", {})
+                    if isinstance(coverage, dict) and attr in coverage:
+                        extracted[attr] = coverage[attr]
+                    else:
+                        eligibility = product.get("eligibility", {})
+                        if isinstance(eligibility, dict) and attr in eligibility:
+                            extracted[attr] = eligibility[attr]
             results[pid] = extracted
 
     evidence = [

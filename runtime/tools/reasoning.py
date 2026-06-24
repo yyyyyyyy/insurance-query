@@ -7,7 +7,7 @@ from runtime.tools.base import BaseTool, ToolResult, ToolStatus
 from runtime.tools.data import PRODUCT_CATALOG
 
 
-COMPARE_DIMENSIONS = {
+COMPARE_DIMENSIONS: Dict[str, Dict[str, Any]] = {
     # Core dimensions
     "waiting_period": {"field": "waiting_period_days", "unit": "天", "category": "保障条款"},
     "deductible": {"field": "deductible", "unit": "元", "category": "费用相关"},
@@ -55,9 +55,14 @@ class CompareTool(BaseTool[CompareInput, CompareOutput]):
     def output_schema(self): return CompareOutput
 
     def execute(self, input_data: CompareInput) -> ToolResult:
-        products = [next((p for p in PRODUCT_CATALOG if p["product_id"] == pid), None)
-                    for pid in input_data.product_ids]
-        products = [p for p in products if p is not None]
+        products: List[Dict[str, Any]] = []
+        for pid in input_data.product_ids:
+            product = next(
+                (prod for prod in PRODUCT_CATALOG if prod["product_id"] == pid),
+                None,
+            )
+            if product is not None:
+                products.append(product)
         if len(products) < 2:
             return ToolResult(tool_name=self.name, status=ToolStatus.ERROR,
                              error={"code": "INSUFFICIENT_PRODUCTS", "message": "Need 2+ products"})
@@ -93,14 +98,14 @@ class CompareTool(BaseTool[CompareInput, CompareOutput]):
                          evidence=evidence)
 
     @staticmethod
-    def _get_value(product: Dict, config: Dict) -> Any:
+    def _get_value(product: Dict[str, Any], config: Dict[str, Any]) -> Any:
         if "field" in config:
             field = config["field"]
             if "." in field:
                 parts = field.split(".")
-                val = product
+                val: Any = product
                 for part in parts:
-                    val = val.get(part, None)
+                    val = val.get(part, None) if isinstance(val, dict) else None
                     if val is None:
                         return None
                 return val

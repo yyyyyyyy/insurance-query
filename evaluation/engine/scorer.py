@@ -79,7 +79,7 @@ class EvaluationEngine:
         # Positive scoring: start at 0, earn points for each good property.
         score = 0.0
         failures = []
-        details = {}
+        details: Dict[str, Any] = {}
         ev_count = trace.evidence_count
         accepted = trace.accepted_evidence_count
         rr = trace.retrieval_results
@@ -117,7 +117,7 @@ class EvaluationEngine:
     def _score_tools(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
         score = 0.0
         failures = []
-        details = {}
+        details: Dict[str, Any] = {}
         tc = trace.tool_call_count
 
         if tc == 0:
@@ -148,7 +148,7 @@ class EvaluationEngine:
     def _score_reasoning(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
         score = 0.0
         failures = []
-        details = {}
+        details: Dict[str, Any] = {}
         plan = trace.plan_steps
 
         if not plan:
@@ -182,7 +182,7 @@ class EvaluationEngine:
     def _score_answer(self, trace: QueryTrace, expected: Optional[EvalSample] = None) -> DimensionScore:
         score = 0.0
         failures = []
-        details = {}
+        details: Dict[str, Any] = {}
         answer = trace.final_answer
         answer_text = answer.get("text", "") if answer else ""
         ev_count = trace.evidence_count
@@ -231,7 +231,7 @@ class EvaluationEngine:
     def _score_efficiency(self, trace: QueryTrace) -> DimensionScore:
         score = 0.0
         failures = []
-        details = {}
+        details: Dict[str, Any] = {}
         latency = trace.total_latency_ms
         tc = trace.tool_call_count
 

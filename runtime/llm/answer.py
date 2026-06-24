@@ -80,14 +80,14 @@ def llm_compose_answer(
 
 
 def _template_answer(
-    query_text,
-    intent_type,
-    tool_outputs,
-    evidence,
-    process_result=None,
-    rule_evaluation=None,
-    memory_context=None,
-):
+    query_text: str,
+    intent_type: str,
+    tool_outputs: Dict[str, Any],
+    evidence: List[Dict[str, Any]],
+    process_result: Optional[Dict[str, Any]] = None,
+    rule_evaluation: Optional[Dict[str, Any]] = None,
+    memory_context: Optional[Dict[str, Any]] = None,
+) -> str:
     """Template-based answer composition (self-contained, no cross-file imports)."""
     lines = [f"查询: {query_text}", ""]
 
@@ -165,7 +165,7 @@ def _template_answer(
         lines.append("## 流程结论")
         lines.append(process_result.get("outcome", ""))
 
-    matched_rules = []
+    matched_rules: List[Dict[str, Any]] = []
     if rule_evaluation:
         matched_rules = rule_evaluation.get("top_decisions", []) or []
     if matched_rules:
@@ -239,7 +239,7 @@ def _compute_confidence(intent_result: Dict[str, Any], evidence: List[Dict[str, 
     score_factor = (sum(scores) / len(scores)) if scores else 0.5
 
     confidence = intent_conf * 0.4 + count_factor * 0.35 + score_factor * 0.25
-    return round(max(0.0, min(confidence, 1.0)), 2)
+    return float(round(max(0.0, min(confidence, 1.0)), 2))
 
 
 def compose_answer_auto(
@@ -264,7 +264,13 @@ def compose_answer_auto(
 
     try:
         return llm_compose_answer(
-            query_text, intent_type, tool_outputs, evidence, **kwargs,
+            query_text,
+            intent_type,
+            tool_outputs,
+            evidence,
+            process_result=process_result,
+            rule_evaluation=rule_evaluation,
+            memory_context=memory_context,
         )
     except (LLMClientError, ValueError, TypeError) as exc:
         logger.warning("LLM answer composition failed, using templates: %s", exc)

@@ -372,7 +372,7 @@ def _deep_get(data: Dict[str, Any], dotted_key: str) -> Any:
     if not data or not isinstance(data, dict):
         return None
     keys = dotted_key.split(".")
-    val = data
+    val: Any = data
     for k in keys:
         if isinstance(val, dict):
             val = val.get(k)

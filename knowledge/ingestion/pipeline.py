@@ -269,7 +269,7 @@ class EmbeddingGenerator:
         """Generate embedding for a single text."""
         if not self._fitted:
             raise RuntimeError("EmbeddingGenerator not fitted. Call fit() first.")
-        if self._fallback:
+        if self._fallback or self.vectorizer is None:
             return self._hash_embed(text)
         vec = self.vectorizer.transform([text]).toarray()[0]
         norm = np.linalg.norm(vec)
