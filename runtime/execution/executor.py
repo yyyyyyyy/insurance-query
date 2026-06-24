@@ -172,7 +172,7 @@ class AsyncExecutor:
         self._inc_stat("total")
 
         start = time.perf_counter()
-        future: Future = self._executor.submit(
+        future: "Future[AsyncResult]" = self._executor.submit(
             self._run_with_retry, tool_name, dispatch_fn, params, timeout
         )
 
@@ -226,8 +226,8 @@ class AsyncExecutor:
         with self._stats_lock:
             return dict(self._execution_stats)
 
-    def shutdown(self):
-        self._executor.shutdown(wait=True)
+    def shutdown(self, wait: bool = True):
+        self._executor.shutdown(wait=wait)
 
 
 def create_default_executor() -> AsyncExecutor:

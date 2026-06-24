@@ -66,7 +66,7 @@ def install_log_filter() -> None:
     ):
         handler = logging.StreamHandler()
         handler.setFormatter(logging.Formatter(fmt))
-        handler._request_id_default = True
+        setattr(handler, "_request_id_default", True)
         root.addHandler(handler)
 
 

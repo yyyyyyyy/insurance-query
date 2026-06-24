@@ -97,17 +97,16 @@ def _add_static_entities(g: OntologyGraph) -> None:
             properties={"category": cat},
         ))
 
-    coverages = [
-        ("ENT-C001", "住院医疗保险金", ["住院医疗", "住院保障"]),
-        ("ENT-C002", "重大疾病保险金", ["重疾保障", "重疾赔付"]),
-        ("ENT-C003", "门诊手术医疗保险金", ["门诊手术", "门诊保障"]),
-        ("ENT-C004", "轻度疾病保险金", ["轻症保障", "轻症"]),
-        ("ENT-C005", "身故保险金", ["身故保障", "死亡赔付"]),
+    coverages: List[tuple[str, str, List[str], Dict[str, Any]]] = [
+        ("ENT-C001", "住院医疗保险金", ["住院医疗", "住院保障"], {}),
+        ("ENT-C002", "重大疾病保险金", ["重疾保障", "重疾赔付"], {}),
+        ("ENT-C003", "门诊手术医疗保险金", ["门诊手术", "门诊保障"], {}),
+        ("ENT-C004", "轻度疾病保险金", ["轻症保障", "轻症"], {}),
+        ("ENT-C005", "身故保险金", ["身故保障", "死亡赔付"], {}),
         ("ENT-C006", "保证续保", ["保证续保条款", "续保保障"], {"category": "续保条款"}),
     ]
-    for item in coverages:
-        props = item[3] if len(item) > 3 else {}
-        g.add_entity(OntologyEntity(item[0], item[1], EntityType.COVERAGE, aliases=item[2], properties=props))
+    for eid, name, aliases, props in coverages:
+        g.add_entity(OntologyEntity(eid, name, EntityType.COVERAGE, aliases=aliases, properties=props))
 
     try:
         reg_catalog = _load_json("knowledge_pack/regulations/catalog.json")
@@ -127,21 +126,22 @@ def _add_static_entities(g: OntologyGraph) -> None:
                 },
             ))
     except (FileNotFoundError, json.JSONDecodeError):
-        for eid, name, aliases, props in [
+        fallback_regs: List[tuple[str, str, List[str], Dict[str, Any]]] = [
             ("ENT-REG001", "健康保险管理办法", ["健康险管理办法"], {"issuer": "银保监会", "year": 2019}),
             ("ENT-REG002", "重大疾病保险疾病定义使用规范", ["重疾定义规范"], {"year": 2020}),
             ("ENT-REG003", "中华人民共和国保险法", ["保险法"], {"year": 2015}),
-        ]:
-            g.add_entity(OntologyEntity(eid, name, EntityType.REGULATION, aliases=aliases, properties=props))
+        ]
+        for eid, name, aliases, reg_props in fallback_regs:
+            g.add_entity(OntologyEntity(eid, name, EntityType.REGULATION, aliases=aliases, properties=reg_props))
 
-    rules = [
+    rules: List[tuple[str, str, List[str], Dict[str, Any]]] = [
         ("ENT-RL001", "等待期", ["等待期规则"], {"max_days": 180}),
         ("ENT-RL002", "免赔额", ["免赔额规则", "起付线"], {}),
         ("ENT-RL003", "犹豫期", ["冷静期"], {"min_days": 15}),
         ("ENT-RL004", "如实告知", ["健康告知", "如实告知义务"], {}),
     ]
-    for eid, name, aliases, props in rules:
-        g.add_entity(OntologyEntity(eid, name, EntityType.RULE, aliases=aliases, properties=props))
+    for eid, name, aliases, rule_props in rules:
+        g.add_entity(OntologyEntity(eid, name, EntityType.RULE, aliases=aliases, properties=rule_props))
 
 
 def _add_relations(g: OntologyGraph, product_ids: List[str]) -> None:

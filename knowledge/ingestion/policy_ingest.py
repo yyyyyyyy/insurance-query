@@ -305,9 +305,9 @@ def bootstrap_dev_samples(*, overwrite: bool = False) -> List[Path]:
             pid = product["product_id"]
             if pid in doc_by_product:
                 continue
-            entry = by_product.get(pid)
-            if not entry:
+            if pid not in by_product:
                 continue
+            entry = by_product[pid]
             out_path = samples_dir / f"{Path(entry.file).stem}.txt"
             if out_path.exists() and not overwrite:
                 if out_path not in written:
