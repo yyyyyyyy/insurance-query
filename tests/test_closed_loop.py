@@ -1,7 +1,6 @@
 """Closed-loop runtime kernel v3 integration tests (S1–S8)."""
 
 import os
-import tempfile
 
 import pytest
 
@@ -99,8 +98,8 @@ class TestClosedLoopRuntime:
         proc = result.get("process_result") or result["answer"].get("process_result")
         assert proc
         outcome = proc.get("outcome", "")
-        if outcome:
-            assert outcome[: min(8, len(outcome))] in result["answer"]["text"] or "流程" in result["answer"]["text"]
+        assert outcome
+        assert outcome in result["answer"]["text"] or "流程" in result["answer"]["text"]
 
     def test_evaluation_uses_event_store(self, engine):
         result = engine.query("比较e生保和好医保")
@@ -110,10 +109,8 @@ class TestClosedLoopRuntime:
         assert result["evaluation"].get("total_score", 0) >= 0
         assert "retrieval" in result["evaluation"].get("dimensions", {})
 
-    def test_memory_follow_up_changes_retrieval_and_answer(self):
-        wm = WorkingMemory(
-            db_path=os.path.join(tempfile.gettempdir(), f"cl_loop_mem_{os.getpid()}.db"),
-        )
+    def test_memory_follow_up_changes_retrieval_and_answer(self, tmp_path):
+        wm = WorkingMemory(db_path=str(tmp_path / "cl_mem.db"))
         engine = MultiAgentEngine(working_memory=wm)
         sid = "cl-loop-mem-001"
         r1 = engine.query("e生保的免赔额是多少", session_id=sid)
@@ -121,20 +118,15 @@ class TestClosedLoopRuntime:
 
         retr1 = _last_event(r1["event_trace"], "RETRIEVAL_EXECUTED")
         retr2 = _last_event(r2["event_trace"], "RETRIEVAL_EXECUTED")
-        assert retr2["payload"].get("query") != retr1["payload"].get("query") or "P001" in retr2["payload"].get("query", "")
-
-        assert (
-            "e生保" in r2.get("resolved_query", "")
-            or "P001" in r2.get("resolved_query", "")
-            or "等待期" in r2["answer"]["text"]
-        )
+        assert retr2["payload"].get("query") != retr1["payload"].get("query")
+        assert "e生保" in r2.get("resolved_query", "") or "P001" in r2.get("resolved_query", "")
 
         sel1 = _last_event(r1["event_trace"], "EVIDENCE_SELECTED")
         sel2 = _last_event(r2["event_trace"], "EVIDENCE_SELECTED")
-        assert sel1["payload"].get("accepted_ids") != sel2["payload"].get("accepted_ids") or r1["answer"]["text"] != r2["answer"]["text"]
+        assert sel1["payload"].get("accepted_ids") != sel2["payload"].get("accepted_ids")
 
-    def test_memory_facts_persist_after_restart(self):
-        db = os.path.join(tempfile.gettempdir(), f"cl_persist_{os.getpid()}.db")
+    def test_memory_facts_persist_after_restart(self, tmp_path):
+        db = str(tmp_path / "cl_persist.db")
         wm1 = WorkingMemory(db_path=db)
         engine1 = MultiAgentEngine(working_memory=wm1)
         sid = "cl-persist-session"
@@ -145,8 +137,8 @@ class TestClosedLoopRuntime:
         ctx = wm2.get_or_create(sid)
         assert "test_fact" in ctx.facts
 
-    def test_tuner_weights_change_retrieval_trace(self):
-        tuning_path = os.path.join(tempfile.gettempdir(), f"cl_tuner_{os.getpid()}.json")
+    def test_tuner_weights_change_retrieval_trace(self, tmp_path):
+        tuning_path = str(tmp_path / "cl_tuner_a.json")
         tuner_a = SelfTuner(config_path=tuning_path)
         tuner_a.config.bm25_weight = 0.85
         tuner_a.config.vector_weight = 0.10
@@ -156,7 +148,7 @@ class TestClosedLoopRuntime:
         engine_a = MultiAgentEngine(tuner=tuner_a)
         r1 = engine_a.query("百万医疗险续保条件", session_id="tuner-a")
 
-        tuner_b = SelfTuner(config_path=tuning_path + ".b.json")
+        tuner_b = SelfTuner(config_path=str(tmp_path / "cl_tuner_b.json"))
         tuner_b.config.bm25_weight = 0.10
         tuner_b.config.vector_weight = 0.85
         tuner_b.config.ontology_weight = 0.05
@@ -169,13 +161,10 @@ class TestClosedLoopRuntime:
         dt2 = next(e for e in r2["event_trace"] if e["event_type"] == "RETRIEVAL_EXECUTED")
         trace1 = dt1["payload"].get("decision_trace", [])
         trace2 = dt2["payload"].get("decision_trace", [])
-        if trace1 and trace2:
-            fc1 = trace1[0].get("feature_contribution", {})
-            fc2 = trace2[0].get("feature_contribution", {})
-            weights_differ = fc1.get("weights") != fc2.get("weights")
-            rank_differ = trace1[0].get("chunk_id") != trace2[0].get("chunk_id")
-            score_differ = trace1[0].get("score") != trace2[0].get("score")
-            assert weights_differ or rank_differ or score_differ
+        assert trace1 and trace2
+        fc1 = trace1[0].get("feature_contribution", {})
+        fc2 = trace2[0].get("feature_contribution", {})
+        assert fc1.get("weights") != fc2.get("weights")
 
         sel1 = next(e for e in r1["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")
         _sel2 = next(e for e in r2["event_trace"] if e["event_type"] == "EVIDENCE_SELECTED")

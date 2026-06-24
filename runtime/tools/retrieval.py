@@ -5,23 +5,7 @@ import re
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 
-def _tokenize_chinese(text: str):
-    """Split Chinese text into meaningful tokens (bigrams + single chars)."""
-    if not text:
-        return []
-    # Remove common question words and punctuation
-    cleaned = re.sub(r'[？?！!，,。.、\s]+', '', text)
-    tokens = []
-    # 2-char bigrams
-    for i in range(len(cleaned) - 1):
-        tokens.append(cleaned[i:i+2])
-    # 3-char trigrams
-    for i in range(len(cleaned) - 2):
-        tokens.append(cleaned[i:i+3])
-    # Also include the full cleaned text
-    tokens.append(cleaned)
-    return list(set(tokens))
-
+from knowledge.retrieval.tokenize import tokenize_chinese
 from runtime.evidence.contract import make_evidence, SourceType
 from runtime.tools.base import BaseTool, ToolResult, ToolStatus
 from runtime.tools.data import PRODUCT_CATALOG
@@ -137,7 +121,7 @@ class DocumentSearchTool(BaseTool[DocumentSearchInput, DocumentSearchOutput]):
                               evidence=evidence)
 
         query = query.lower()
-        tokens = _tokenize_chinese(query)
+        tokens = tokenize_chinese(query)
         chunks = []
         matched_docs = set()
         for doc in DOCUMENT_STORE:
@@ -227,7 +211,7 @@ class RegulationSearchTool(BaseTool[RegulationSearchInput, RegulationSearchOutpu
                               data={"regulations": results}, evidence=evidence)
 
         query = query.lower()
-        tokens = _tokenize_chinese(query)
+        tokens = tokenize_chinese(query)
         results = []
         for doc in DOCUMENT_STORE:
             if doc.get("document_type") != "regulation":

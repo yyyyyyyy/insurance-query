@@ -95,10 +95,36 @@ class TraceAwareCache:
                     self._stores[s].clear()
             return count
 
-    def query_key(self, query: str, session_id: str = "") -> str:
+    def query_key(
+        self,
+        query: str,
+        session_id: str = "",
+        memory_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
         if session_id:
-            return hashlib.sha256(f"q:{query}:{session_id}".encode()).hexdigest()
+            mem_fp = self._memory_fingerprint(memory_context)
+            payload = f"q:{query}:{session_id}:{mem_fp}"
+            return hashlib.sha256(payload.encode()).hexdigest()
         return hashlib.sha256(f"q:{query}".encode()).hexdigest()
+
+    @staticmethod
+    def _memory_fingerprint(memory_context: Optional[Dict[str, Any]]) -> str:
+        if not memory_context:
+            return ""
+        facts = memory_context.get("facts") or {}
+        # Hash fact values as well as keys so value changes invalidate cache
+        fact_items = sorted(
+            (k, str(v.get("value", "")) if isinstance(v, dict) else str(v))
+            for k, v in facts.items()
+        )
+        subset = {
+            "turn_count": memory_context.get("turn_count", 0),
+            "previous_product_ids": memory_context.get("previous_product_ids", []),
+            "fact_items": fact_items,
+        }
+        return hashlib.sha256(
+            json.dumps(subset, sort_keys=True, ensure_ascii=False).encode()
+        ).hexdigest()[:16]
 
     def retrieval_key(self, query: str) -> str:
         return hashlib.sha256(f"r:{query}".encode()).hexdigest()

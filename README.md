@@ -54,7 +54,7 @@ set LLM_ENABLED=false
 pytest tests/ -q
 ```
 
-基线 331+ passed，含 `tests/test_closed_loop.py` 闭环门禁。
+基线 **342 passed**（`LLM_ENABLED=false`），含 `tests/test_closed_loop.py` 闭环门禁。
 
 ## 仓库结构（摘要）
 

@@ -75,6 +75,7 @@ class RuleEngine:
         "approve": 0,
         "eligible": 0,
         "partial": 1,
+        "not_eligible": -10,
     }
 
     def __init__(self, rules: Optional[List[Dict[str, Any]]] = None):
@@ -147,12 +148,10 @@ class RuleEngine:
         match_reasons: List[str] = []
         tool_match = False
         if conditions:
-            for cond in conditions:
-                field_name = cond.get("field", "")
-                if _check_condition(cond, tool_results, evidence):
-                    match_reasons.append(f"condition_matched: {field_name}")
-                    tool_match = True
-            if not tool_match:
+            if not all(
+                _check_condition(cond, tool_results, evidence)
+                for cond in conditions
+            ):
                 return RuleDecision(
                     rule_id=rule.get("rule_id", ""),
                     domain=rule.get("domain", ""),
@@ -165,6 +164,12 @@ class RuleEngine:
                     matched=False,
                     match_reason="conditions not satisfied",
                 )
+            tool_match = True
+            match_reasons = [
+                f"condition_matched: {cond.get('field', '')}"
+                for cond in conditions
+                if _check_condition(cond, tool_results, evidence)
+            ]
 
         keywords = self._extract_keywords(description)
         query_match = any(kw in query_text for kw in keywords if len(kw) >= 2)
@@ -304,7 +309,8 @@ def _compare(
                     return fn(float(actual), float(expected))
                 except (TypeError, ValueError):
                     return False
-        return str(expected).lower() in str(actual).lower()
+        logger.warning("Unknown rule operator %r — treating as no match", operator)
+        return False
     except Exception:
         return False
 

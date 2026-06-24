@@ -16,6 +16,8 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
+import threading
 import time
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
@@ -24,37 +26,45 @@ logger = logging.getLogger(__name__)
 
 _OTEL_AVAILABLE = False
 _tracer: Any = None
+_init_lock = threading.Lock()
 
 
 def init_tracer(service_name: str = "insurequery-api"):
     """Initialize OpenTelemetry tracer. Falls back to log-based spans if not installed."""
     global _tracer, _OTEL_AVAILABLE
 
-    try:
-        from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-        from opentelemetry.sdk.resources import Resource
+    with _init_lock:
+        if _tracer is not None:
+            return _tracer
 
-        resource = Resource.create({"service.name": service_name})
-        provider = TracerProvider(resource=resource)
+        try:
+            from opentelemetry import trace
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.sdk.resources import Resource
 
-        otlp_endpoint = "http://localhost:4318/v1/traces"
-        exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
-        provider.add_span_processor(SimpleSpanProcessor(exporter))
-        trace.set_tracer_provider(provider)
+            resource = Resource.create({"service.name": service_name})
+            provider = TracerProvider(resource=resource)
 
-        _tracer = trace.get_tracer(service_name)
-        _OTEL_AVAILABLE = True
-        logger.info("OpenTelemetry initialized (OTLP -> %s)", otlp_endpoint)
+            otlp_endpoint = (
+                os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+                or "http://localhost:4318/v1/traces"
+            )
+            exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+            provider.add_span_processor(SimpleSpanProcessor(exporter))
+            trace.set_tracer_provider(provider)
 
-    except ImportError:
-        logger.info("opentelemetry not installed. Using log-based span fallback.")
-        _tracer = _LogSpanTracer()
-    except Exception as exc:
-        logger.warning("Failed to init OTel: %s. Using log-based spans.", exc)
-        _tracer = _LogSpanTracer()
+            _tracer = trace.get_tracer(service_name)
+            _OTEL_AVAILABLE = True
+            logger.info("OpenTelemetry initialized (OTLP -> %s)", otlp_endpoint)
+
+        except ImportError:
+            logger.info("opentelemetry not installed. Using log-based span fallback.")
+            _tracer = _LogSpanTracer()
+        except Exception as exc:
+            logger.warning("Failed to init OTel: %s. Using log-based spans.", exc)
+            _tracer = _LogSpanTracer()
 
     return _tracer
 

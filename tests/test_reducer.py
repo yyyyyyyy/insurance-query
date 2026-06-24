@@ -150,6 +150,20 @@ class TestReplayState:
         state = replay_state(store, "nonexistent")
         assert state.event_count == 0
 
+    def test_multi_turn_replay_snapshots(self):
+        store = EventStore()
+        store.append(user_query_event("s1", 1, "first query"))
+        store.append(answer_generated_event("s1", 2, "first answer"))
+        store.append(user_query_event("s1", 3, "second query"))
+        store.append(answer_generated_event("s1", 4, "second answer"))
+        state = replay_state(store, "s1")
+        assert len(state.turns) == 1
+        assert state.turns[0]["query"] == "first query"
+        assert state.answer.text == "second answer"
+        turn0 = replay_state(store, "s1", turn=0)
+        assert turn0.query == "first query"
+        assert turn0.answer.text == "first answer"
+
 
 class TestStateSerialization:
     """Test RuntimeState.to_dict()."""

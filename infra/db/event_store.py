@@ -195,9 +195,9 @@ class SqliteEventStore(EventStore):
                 self._truncate_to(snapshot)
         self._write_lock.release()
 
-    def clear(self) -> None:
-        """Clear all events from both SQLite and memory."""
-        super().clear()
+    def clear(self, *, _testing_only: bool = False) -> None:
+        """Clear all events from both SQLite and memory (testing-only by default)."""
+        super().clear(_testing_only=_testing_only)
         if self._conn:
             self._conn.execute("DELETE FROM events")
             self._conn.commit()

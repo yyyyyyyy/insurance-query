@@ -9,7 +9,7 @@ produces the identical state. This enables deterministic replay and debugging.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from runtime.engine.event_store import Event, EventType
 from runtime.engine.state import Answer, Intent, PlanStep, RuntimeState, ToolResult
@@ -81,8 +81,62 @@ def _apply_event(state: RuntimeState, event: Event) -> None:
 
 
 def _apply_user_query(state: RuntimeState, event: Event) -> None:
+    if state.query is not None:
+        state.turns.append(_snapshot_turn(state))
+        state.current_turn_index = len(state.turns)
     state.query = event.payload.get("query_text", "")
     state.status = "planning"
+    state.intent = None
+    state.plan = []
+    state.tool_results = []
+    state.answer = None
+    state.accepted_evidence_ids = []
+    state.evidence_selection = {}
+    state.process_result = {}
+    state.rule_evaluation = {}
+    # Clear per-turn knowledge layer state (P1 multi-turn leak fix)
+    state.ontology_context = []
+    state.retrieved_chunks = []
+    state.retrieval_path = []
+    state.evidence_graph = {}
+    state.agent_execution_graph = []
+    state.cache_state = {}
+
+
+def _snapshot_turn(state: RuntimeState) -> dict:
+    return {
+        "query": state.query,
+        "intent": {
+            "intent_type": state.intent.intent_type,
+            "confidence": state.intent.confidence,
+            "entities": state.intent.entities,
+        } if state.intent else None,
+        "accepted_evidence_ids": list(state.accepted_evidence_ids),
+        "answer_text": state.answer.text if state.answer else "",
+        "process_result": dict(state.process_result),
+        "rule_evaluation": dict(state.rule_evaluation),
+        "plan": [
+            {
+                "step_id": s.step_id,
+                "tool_name": s.tool_name,
+                "description": s.description,
+                "input_params": s.input_params,
+                "status": s.status,
+            }
+            for s in state.plan
+        ],
+        "tool_results": [
+            {
+                "tool_name": r.tool_name,
+                "success": r.success,
+                "output": r.output,
+                "evidence": r.evidence,
+                "error": r.error,
+                "duration_ms": r.duration_ms,
+            }
+            for r in state.tool_results
+        ],
+    }
 
 
 def _apply_intent_classified(state: RuntimeState, event: Event) -> None:
@@ -324,7 +378,58 @@ def _apply_tuning_applied(state: RuntimeState, event: Event) -> None:
     state.tuning_weights = dict(event.payload.get("weights", {}))
 
 
-def replay_state(store, session_id: str) -> RuntimeState:
-    """Convenience function to replay a session's events and rebuild state."""
+def replay_state(store, session_id: str, turn: int = -1) -> RuntimeState:
+    """Convenience function to replay a session's events and rebuild state.
+
+    turn=-1 returns the full state (latest turn fields). turn>=0 returns a
+    synthetic RuntimeState for that completed turn from state.turns.
+    """
     events = store.replay(session_id)
-    return reduce(session_id, events)
+    state = reduce(session_id, events)
+    if turn < 0:
+        return state
+    if turn >= len(state.turns):
+        raise ValueError(
+            f"turn={turn} out of range. Session has {len(state.turns)} turns "
+            f"(valid: 0..{len(state.turns) - 1})"
+        )
+    snap = state.turns[turn]
+    partial = RuntimeState(session_id=session_id)
+    partial.query = snap.get("query")
+    partial.turns = state.turns[: turn + 1]
+    partial.current_turn_index = turn
+    partial.accepted_evidence_ids = list(snap.get("accepted_evidence_ids", []))
+    intent_data = snap.get("intent")
+    if intent_data:
+        partial.intent = Intent(
+            intent_type=intent_data.get("intent_type", "unknown"),
+            confidence=intent_data.get("confidence", 0.0),
+            entities=intent_data.get("entities", []),
+            raw_query=partial.query or "",
+        )
+    if snap.get("answer_text"):
+        partial.answer = Answer(text=snap["answer_text"])
+    partial.process_result = dict(snap.get("process_result") or {})
+    partial.rule_evaluation = dict(snap.get("rule_evaluation") or {})
+    partial.plan = [
+        PlanStep(
+            step_id=s.get("step_id", i),
+            tool_name=s.get("tool_name", "unknown"),
+            description=s.get("description", ""),
+            input_params=s.get("input_params", {}),
+            status=s.get("status", "pending"),
+        )
+        for i, s in enumerate(snap.get("plan") or [])
+    ]
+    partial.tool_results = [
+        ToolResult(
+            tool_name=r.get("tool_name", "unknown"),
+            success=r.get("success", False),
+            output=r.get("output", {}),
+            evidence=r.get("evidence", []),
+            error=r.get("error"),
+            duration_ms=r.get("duration_ms", 0.0),
+        )
+        for r in snap.get("tool_results") or []
+    ]
+    return partial

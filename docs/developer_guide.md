@@ -124,6 +124,10 @@ from runtime.engine.reducer import replay_state
 state = replay_state(engine.event_store, r["session_id"])
 print(state.accepted_evidence_ids)
 print(state.cache_state)  # CACHE_HIT 元数据
+
+# 多轮 session：turn=-1 为最后一轮；turn=0 为第一轮快照
+state_turn0 = replay_state(engine.event_store, r["session_id"], turn=0)
+print(state.turns)  # 已完成轮次快照列表
 ```
 
 ### Runtime Console
@@ -166,6 +170,8 @@ pytest tests/ -q
 | 非确定性 | 同输入必须同输出 |
 | 绕过 Selector | 禁止将 retrieval chunk 直接写入 Answer |
 | 合成 trace | Evaluation 必须读 event_store |
+| 缓存误命中 | 同 session 下 `query_key` 含 `memory_context` 指纹；memory 变化不应命中旧缓存 |
+| 调试端点泄露 | `/stats`、`/dashboard`、`/events` 默认 404，需 `DEBUG_ENDPOINTS=1` |
 
 ---
 

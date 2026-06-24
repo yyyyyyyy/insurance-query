@@ -64,6 +64,47 @@ KNOWN_ENTITIES = {
 }
 
 
+def _product_entity_values() -> List[str]:
+    """Static product keywords plus names from PRODUCT_CATALOG."""
+    seen = set(KNOWN_ENTITIES.get("product", []))
+    values = list(seen)
+    try:
+        from runtime.tools.data import PRODUCT_CATALOG
+        for prod in PRODUCT_CATALOG:
+            for key in ("name", "company_short", "product_type"):
+                val = (prod.get(key) or "").strip()
+                if val and val not in seen:
+                    seen.add(val)
+                    values.append(val)
+    except Exception:
+        pass
+    return values
+
+
+def _extract_entities(query_text: str, entity_types: List[str]) -> List[Dict[str, Any]]:
+    """Extract known entities from query text."""
+    entities = []
+    for entity_type in entity_types:
+        if entity_type == "product":
+            for value in _product_entity_values():
+                if value in query_text:
+                    entities.append({
+                        "type": entity_type,
+                        "value": value,
+                        "source": "keyword_match",
+                    })
+            continue
+        if entity_type in KNOWN_ENTITIES:
+            for value in KNOWN_ENTITIES[entity_type]:
+                if value in query_text:
+                    entities.append({
+                        "type": entity_type,
+                        "value": value,
+                        "source": "keyword_match",
+                    })
+    return entities
+
+
 def classify_intent(query_text: str) -> Dict[str, Any]:
     """Classify user intent from query text using pattern matching.
 
@@ -87,21 +128,6 @@ def classify_intent(query_text: str) -> Dict[str, Any]:
     entities = _extract_entities(query_text, entity_types)
 
     return {"intent": intent_type, "confidence": round(best_score, 2), "entities": entities}
-
-
-def _extract_entities(query_text: str, entity_types: List[str]) -> List[Dict[str, Any]]:
-    """Extract known entities from query text."""
-    entities = []
-    for entity_type in entity_types:
-        if entity_type in KNOWN_ENTITIES:
-            for value in KNOWN_ENTITIES[entity_type]:
-                if value in query_text:
-                    entities.append({
-                        "type": entity_type,
-                        "value": value,
-                        "source": "keyword_match",
-                    })
-    return entities
 
 
 # --- Plan Generation ---

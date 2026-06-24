@@ -19,7 +19,7 @@ FOLLOW_UP_MARKERS = re.compile(
 )
 
 PRODUCT_REF_MARKERS = re.compile(
-    r"(免赔额|等待期|保费|保障|续保|理赔|除外|覆盖)"
+    r"(免赔额|等待期|保费|续保|理赔|除外)"
 )
 
 
@@ -131,6 +131,20 @@ def resolve_query(
     primary_product = prev_products[0] if prev_products else (
         prev_entities[0] if prev_entities else ""
     )
+
+    if not primary_product and prev_ids:
+        try:
+            from runtime.tools.data import PRODUCT_CATALOG
+            for pid in prev_ids[:2]:
+                prod = next(
+                    (p for p in PRODUCT_CATALOG if p.get("product_id") == pid),
+                    None,
+                )
+                if prod and prod.get("name"):
+                    primary_product = prod["name"]
+                    break
+        except Exception:
+            pass
 
     if primary_product:
         try:

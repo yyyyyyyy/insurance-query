@@ -38,3 +38,12 @@ class TestSqliteEventStore:
             store.append(dup)
         store.rollback_batch()
         assert store.count() == 1
+
+    def test_clear_requires_testing_guard(self, tmp_event_store):
+        store = tmp_event_store
+        store.append(user_query_event("s1", 1, "keep"))
+        with pytest.raises(RuntimeError):
+            store.clear()
+        assert store.count() == 1
+        store.clear(_testing_only=True)
+        assert store.count() == 0

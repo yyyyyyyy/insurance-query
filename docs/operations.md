@@ -21,7 +21,8 @@ python -m apps.api.main
 | GET | `/trace/{session_id}` | 按 session 重放 |
 | GET | `/sessions/{session_id}` | Session 详情 + 事件 |
 | GET | `/health` | 健康检查 |
-| GET | `/stats` | 运行时统计 |
+| GET | `/stats` | 运行时统计（需 `DEBUG_ENDPOINTS=1`） |
+| GET | `/dashboard` | 可观测性仪表盘（需 `DEBUG_ENDPOINTS=1`） |
 
 ### 示例
 
@@ -53,13 +54,14 @@ pytest tests/ -q
 pytest tests/test_closed_loop.py -q
 ```
 
-当前基线：**282+ passed**（含 S1–S8 闭环用例）。
+当前基线：**342 passed**（`LLM_ENABLED=false`，含 S1–S8 闭环用例）。
 
 ## 环境变量
 
 | 变量 | 说明 |
 |------|------|
 | `LLM_ENABLED` | `false` 强制规则/模板模式（测试推荐） |
+| `DEBUG_ENDPOINTS` | `1` 启用 `/stats`、`/dashboard`、`/events` 调试端点 |
 | `DEEPSEEK_API_KEY` | 可选，启用 LLM 意图与回答 |
 | `USE_CANONICAL_EVIDENCE` | 默认 `1`；`0` 仅紧急回退旧证据路径 |
 

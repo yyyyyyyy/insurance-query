@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from collections import defaultdict
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+# import-time basicConfig removed to avoid conflict with apps.api.main's
+# request_id log filter. Logging configuration is done at app startup.
 logger = logging.getLogger("insurequery")
 
 @dataclass

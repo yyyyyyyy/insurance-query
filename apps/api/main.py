@@ -11,7 +11,7 @@ import asyncio
 
 from fastapi import FastAPI, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from runtime.tools.registry import create_default_registry, ToolDispatcher
@@ -50,6 +50,8 @@ def _create_app() -> FastAPI:
 
         def _warmup():
             try:
+                from infra.observability.telemetry import init_tracer
+                init_tracer("insurequery-api")
                 engine._ensure_knowledge()
                 logger.info("Knowledge preloaded at startup")
             except Exception as exc:
@@ -190,17 +192,23 @@ async def process_query(request: QueryRequest):
 
 @app.get("/trace/{session_id}", tags=["Runtime"])
 async def get_trace(session_id: SessionIdPath):
+    if not _debug_endpoints_enabled():
+        return Response(status_code=404)
     return _rebuild_console_from_session(session_id)
 
 
 @app.get("/sessions", tags=["Runtime"])
 async def list_sessions():
+    if not _debug_endpoints_enabled():
+        return Response(status_code=404)
     ids = engine.event_store.list_sessions()
     return {"sessions": ids, "count": len(ids)}
 
 
 @app.get("/sessions/{session_id}", tags=["Runtime"])
 async def get_session(session_id: SessionIdPath):
+    if not _debug_endpoints_enabled():
+        return Response(status_code=404)
     console = _rebuild_console_from_session(session_id)
     ctx = _working_memory.get_or_create(session_id) if _working_memory else None
     return {
@@ -278,18 +286,34 @@ async def health_check():
     )
 
 
+def _debug_endpoints_enabled() -> bool:
+    import os
+    return os.environ.get("DEBUG_ENDPOINTS", "").lower() in {"1", "true", "yes"}
+
+
 @app.get("/stats", tags=["System"])
 async def system_stats():
+    if not _debug_endpoints_enabled():
+        raise HTTPException(
+            status_code=404,
+            detail="Debug endpoints disabled. Set DEBUG_ENDPOINTS=1 to enable.",
+        )
     return engine.stats()
 
 
 @app.get("/dashboard", tags=["System"])
 async def dashboard():
+    if not _debug_endpoints_enabled():
+        raise HTTPException(
+            status_code=404,
+            detail="Debug endpoints disabled. Set DEBUG_ENDPOINTS=1 to enable.",
+        )
     return {
         "agent_statuses": engine.bus.agent_statuses(),
         "async_executor": engine.async_exec.stats(),
         "cache": engine.cache.stats(),
         "tuning": engine.tuner.stats(),
+        "observability": engine.observability.metrics.snapshot(),
     }
 
 
@@ -298,8 +322,7 @@ async def list_all_events():
     # Internal agent message log may contain errors, params, and internal
     # payloads. Gate it behind DEBUG_ENDPOINTS so it is disabled by default
     # in production.
-    import os
-    if os.environ.get("DEBUG_ENDPOINTS", "").lower() not in {"1", "true", "yes"}:
+    if not _debug_endpoints_enabled():
         raise HTTPException(
             status_code=404,
             detail="Debug endpoints disabled. Set DEBUG_ENDPOINTS=1 to enable.",

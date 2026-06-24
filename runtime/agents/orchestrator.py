@@ -14,53 +14,38 @@ import uuid
 from contextlib import nullcontext as _nullcontext
 from typing import Any, Dict, List, Optional
 
-from runtime.agents.bus import AgentBus, AgentMessage, AgentContext, AgentStatus
+from runtime.agents.bus import AgentBus, AgentMessage, AgentContext
 from runtime.agents.agents import (
     PlannerAgent, RetrievalAgent, ToolAgent, EvaluationAgent, SupervisorAgent
 )
 from runtime.tools.registry import ToolDispatcher, create_default_registry
 from runtime.execution.executor import create_default_executor
 from runtime.engine.event_store import (
-    EventStore, answer_generated_event, evidence_found_event,
-    intent_classified_event, ontology_expanded_event, plan_created_event,
-    tool_called_event, user_query_event, retrieval_executed_event,
-    trace_captured_event, evaluation_completed_event,
-    hallucination_detected_event, system_feedback_generated_event,
-    memory_updated_event, tool_executed_event, process_executed_event,
-    rule_evaluated_event, tuning_applied_event, evidence_selected_event,
+    EventStore, answer_generated_event,
+    user_query_event,
+    evidence_selected_event,
     cache_hit_event, cache_miss_event,
-    agent_assigned_event, agent_completed_event, system_degraded_event,
-)
-from runtime.evidence.canonical import CanonicalEvidenceSet
-from runtime.evidence.selector import select_evidence_for_answer
-from runtime.evidence.adapters import (
-    tool_evidence_to_candidates,
-    hybrid_chunks_to_candidates,
-    rules_to_candidates,
-    process_to_candidates,
-    memory_to_candidates,
+    memory_updated_event,
+    evaluation_completed_event,
+    hallucination_detected_event,
+    trace_captured_event,
 )
 from runtime.agents.pipeline.memory import resolve_turn_memory
+from runtime.agents.pipeline._helpers import EventSequencer, send_agent
+from runtime.agents.pipeline.planning import run_planning_stage
+from runtime.agents.pipeline.retrieval_stage import run_retrieval_stage
+from runtime.agents.pipeline.tools_stage import run_tools_stage
+from runtime.agents.pipeline.process_rules import run_process_rules_stage
+from runtime.agents.pipeline.evidence import run_evidence_stage
+from runtime.agents.pipeline.answer import build_answer_payload, run_answer_stage
+from runtime.agents.pipeline.evaluation_stage import run_evaluation_stage
 from runtime.process.runner import ProcessRunner
 from infra.cache.store import TraceAwareCache
+from infra.observability.monitor import ObservabilityLayer
+from infra.observability.telemetry import get_tracer
 from knowledge.ingestion.pipeline import ChunkStore
 from knowledge.ontology.graph import OntologyGraph
 from knowledge.retrieval.engine import HybridRetriever
-
-
-class _EventSequencer:
-    """Monotonic per-session event sequence allocator."""
-
-    def __init__(self, event_store: EventStore, session_id: str):
-        self._store = event_store
-        self._session_id = session_id
-        events = event_store.get_session_events(session_id)
-        self._next = (max(e.sequence_number for e in events) + 1) if events else 1
-
-    def append(self, factory, *args, **kwargs) -> None:
-        seq = self._next
-        self._next += 1
-        self._store.append(factory(self._session_id, seq, *args, **kwargs))
 
 
 class MultiAgentEngine:
@@ -101,6 +86,7 @@ class MultiAgentEngine:
         self._knowledge_loaded = False
         self._knowledge_lock = threading.Lock()
         self._rules: List[Dict[str, Any]] = []
+        self.observability = ObservabilityLayer()
 
     def _acquire_session_lock(self, session_id: str):
         """Return the per-session lock if the store provides one, else None.
@@ -114,47 +100,13 @@ class MultiAgentEngine:
             return getter(session_id)
         return None
 
-    def _send_agent(
-        self,
-        ctx: AgentContext,
-        session_id: str,
-        seq: _EventSequencer,
-        recipient: str,
-        msg_type: str,
-        payload: Dict[str, Any],
-        trace_id: str,
-        *,
-        emit_events: bool = True,
-    ) -> AgentMessage:
-        """Dispatch to an agent, optionally recording agent lifecycle events."""
-        if emit_events:
-            seq.append(agent_assigned_event, recipient, {"msg_type": msg_type})
+    def _send_agent(self, *args, **kwargs):
+        """Backward-compatible wrapper around pipeline send_agent."""
+        return send_agent(self, *args, **kwargs)
 
-        resp = self.bus.send(AgentMessage(
-            str(uuid.uuid4()), "orchestrator", recipient, msg_type,
-            payload, trace_id=trace_id,
-        ), ctx)
-
-        agent = self.bus.get_agent(recipient)
-        turn_status = ctx.agent_statuses.get(recipient) if ctx else None
-        if turn_status is None and agent:
-            turn_status = agent.status
-
-        if emit_events and agent and turn_status is not None:
-            status_val = turn_status.value if isinstance(turn_status, AgentStatus) else str(turn_status)
-            seq.append(
-                agent_completed_event,
-                recipient,
-                {"msg_type": resp.msg_type, "status": status_val},
-            )
-            if turn_status == AgentStatus.FAILED:
-                ctx.degraded_mode = True
-                seq.append(
-                    system_degraded_event,
-                    reason=f"agent:{recipient}:failed",
-                )
-
-        return resp
+    def _stage_span(self, name: str, **attrs):
+        tracer = get_tracer()
+        return tracer.start_as_current_span(name, attributes=attrs)
 
     def _materialize_cache_hit_response(
         self,
@@ -172,7 +124,7 @@ class MultiAgentEngine:
         t0: float,
     ) -> Dict[str, Any]:
         """Append causal replay events for cache hit (I1) without re-running pipeline."""
-        seq = _EventSequencer(self.event_store, session_id)
+        seq = EventSequencer(self.event_store, session_id)
 
         seq.append(user_query_event, query_text)
         seq.append(
@@ -393,7 +345,7 @@ class MultiAgentEngine:
             memory_context=memory_context,
         )
 
-        qkey = self.cache.query_key(query_text, session_id)
+        qkey = self.cache.query_key(query_text, session_id, memory_context)
         cached_val, was_hit = self.cache.get("query", qkey)
         if was_hit and cached_val:
             entry_meta = self.cache.get_entry_meta("query", qkey)
@@ -412,299 +364,141 @@ class MultiAgentEngine:
                 t0=t0,
             )
 
-        seq = _EventSequencer(self.event_store, session_id)
+        seq = EventSequencer(self.event_store, session_id)
         seq.append(user_query_event, query_text)
-
         seq.append(
             memory_updated_event,
             action="read",
             facts=memory_context.get("facts", {}),
             is_follow_up=memory_resolution.get("is_follow_up", False),
         )
-
         seq.append(cache_miss_event, store="query", key=qkey)
 
-        self.bus.send(AgentMessage(
+        # Supervisor health check — write response into ctx.system_health
+        health_resp = self.bus.send(AgentMessage(
             str(uuid.uuid4()), "orchestrator", "supervisor", "control",
             {"action": "health_check"}, trace_id=trace_id,
         ), ctx)
+        ctx.system_health = health_resp.payload.get("health", {})
 
-        # --- Intent + Plan (with memory) ---
-        resp = self._send_agent(
-            ctx, session_id, seq, "planner", "task",
-            {
-                "query": resolved_query,
-                "memory_context": memory_context,
-                "injected_entities": injected_entities,
-            },
-            trace_id,
-        )
-        intent = resp.payload.get("intent", {})
-        plan = resp.payload.get("plan", resp.payload.get("fallback_plan", []))
-        ctx.intent = intent
-        ctx.plan = plan
-        ctx.execution_graph.append({
-            "agent": "planner", "intent": intent.get("intent"), "plan_len": len(plan),
-        })
-
-        seq.append(
-            intent_classified_event,
-            intent=intent.get("intent", "general_inquiry"),
-            confidence=intent.get("confidence", 0.5),
-            entities=intent.get("entities", []),
-        )
-        seq.append(
-            plan_created_event,
-            plan=plan,
-            reasoning=f"Plan for intent: {intent.get('intent', 'general_inquiry')}",
-        )
-
-        # --- Retrieval (tuner-weighted) ---
-        retrieval_weights = self.tuner.get_retrieval_params()
-        retrieval_weights["min_score"] = 0.0
-        ctx.retrieval_weights = retrieval_weights
-
-        seed_names = [e.get("value", "") for e in intent.get("entities", [])]
-        onto_matches = self._ontology_expand(seed_names)
-        ctx.ontology_context = onto_matches
-
-        if onto_matches:
-            seq.append(
-                ontology_expanded_event,
-                seed_entities=onto_matches, expanded_entities=onto_matches,
+        t_plan = time.perf_counter()
+        with self._stage_span("stage.planning", session_id=session_id):
+            planning = run_planning_stage(
+                self, ctx, seq,
+                session_id=session_id,
+                trace_id=trace_id,
+                resolved_query=resolved_query,
+                memory_context=memory_context,
+                injected_entities=injected_entities,
             )
-
-        resp = self._send_agent(
-            ctx, session_id, seq, "retrieval", "task",
-            {
-                "query": retrieval_query,
-                "ontology_context": seed_names,
-                "memory_context": memory_context,
-                "retrieval_weights": retrieval_weights,
-            },
-            trace_id,
-        )
-        retrieval_chunks = resp.payload.get("chunks", [])
-        decision_trace = resp.payload.get("decision_trace", [])
-        ctx.retrieval_results = retrieval_chunks
-        ctx.execution_graph.append({"agent": "retrieval", "chunks": len(retrieval_chunks)})
-
-        seq.append(
-            retrieval_executed_event,
-            query=retrieval_query,
-            result_count=len(retrieval_chunks),
-            ontology_used=len(onto_matches) > 0,
-            weights=retrieval_weights,
-            base_query=resolved_query,
-            decision_trace=decision_trace,
-            chunks=retrieval_chunks[:10],
+        self.observability.metrics.record_stage(
+            "planning", (time.perf_counter() - t_plan) * 1000,
         )
 
-        # --- Tool execution ---
-        resp = self._send_agent(
-            ctx, session_id, seq, "tool", "task",
-            {
-                "plan": plan, "query": resolved_query,
-                "retrieval_context": retrieval_chunks[:5],
-            },
-            trace_id,
-        )
-        agent_results = resp.payload.get("results", {})
-        tool_memory_facts = resp.payload.get("memory_facts", {})
-        ctx.execution_graph.append({"agent": "tool", "tools": list(agent_results.keys())})
+        intent = planning.intent
+        plan = planning.plan
+        intent_type = planning.intent_type
 
-        tool_data: Dict[str, Any] = {}
-        all_evidence: List[Dict[str, Any]] = []
-        tools_attempted: List[str] = []
-        for tname, ar_dict in agent_results.items():
-            tools_attempted.append(tname)
-            status = ar_dict.get("status", "")
-            seq.append(
-                tool_called_event,
-                tool_name=tname,
-                input_params=ar_dict.get("metadata", {}),
+        t_retr = time.perf_counter()
+        with self._stage_span("stage.retrieval", session_id=session_id):
+            retrieval = run_retrieval_stage(
+                self, ctx, seq,
+                trace_id=trace_id,
+                resolved_query=resolved_query,
+                retrieval_query=retrieval_query,
+                intent=intent,
             )
-            duration = 0.0
-            fact_keys: List[str] = []
-            if status == "success" and ar_dict.get("result"):
-                r = ar_dict["result"]
-                tool_data[tname] = r.get("data", {})
-                evidence = r.get("evidence", [])
-                all_evidence.extend(evidence)
-                duration = r.get("duration_ms", 0)
-                seq.append(
-                    evidence_found_event,
-                    tool_name=tname,
-                    evidence=evidence, output=r.get("data", {}),
-                    duration_ms=duration,
-                )
-            if tname in tool_memory_facts:
-                fact_keys.append(tname)
-            seq.append(
-                tool_executed_event,
-                tool_name=tname, status=status,
-                duration_ms=duration, fact_keys=fact_keys,
+        self.observability.metrics.record_stage(
+            "retrieval", (time.perf_counter() - t_retr) * 1000,
+        )
+        retrieval_chunks = retrieval.retrieval_chunks
+        retrieval_weights = retrieval.retrieval_weights
+
+        t_tools = time.perf_counter()
+        with self._stage_span("stage.tools", session_id=session_id):
+            tools_out = run_tools_stage(
+                self, ctx, seq,
+                trace_id=trace_id,
+                resolved_query=resolved_query,
+                plan=plan,
+                retrieval_chunks=retrieval_chunks,
             )
-
-        ctx.tool_results = tool_data
-        ctx.evidence = all_evidence
-
-        # MEMORY_UPDATED (write facts from tools)
-        if ctx.memory_facts:
-            seq.append(memory_updated_event, action="write", facts=ctx.memory_facts)
-
-        # --- Process execution ---
-        intent_type = intent.get("intent", "general_inquiry")
-        preliminary_rules = self._evaluate_rules(
-            resolved_query, intent_type, tool_data, all_evidence,
+        self.observability.metrics.record_stage(
+            "tools", (time.perf_counter() - t_tools) * 1000,
         )
-        rule_decisions_pre = [d.to_dict() for d in preliminary_rules.decisions]
 
-        process_result = self.process_runner.run(
-            intent=intent_type,
-            tool_results=tool_data,
-            rule_decisions=rule_decisions_pre,
-            memory_facts=ctx.memory_facts,
-            query_text=resolved_query,
-        )
-        if process_result:
-            ctx.process_result = process_result.to_dict()
-            seq.append(
-                process_executed_event,
-                process_name=process_result.process_name,
-                path=process_result.path,
-                terminal_state=process_result.terminal_state,
-                outcome=process_result.outcome,
+        t_proc = time.perf_counter()
+        with self._stage_span("stage.process_rules", session_id=session_id):
+            proc_rules = run_process_rules_stage(
+                self, ctx, seq,
+                session_id=session_id,
+                resolved_query=resolved_query,
+                intent_type=intent_type,
+                tool_data=tools_out.tool_data,
+                all_evidence=tools_out.all_evidence,
             )
-            if self.working_memory:
-                self.working_memory.set_active_process(session_id, process_result.process_name)
-
-        # --- Rule evaluation (strict) ---
-        rule_eval = preliminary_rules
-        ctx.rule_evaluation = rule_eval.to_dict()
-        matched = [d.to_dict() for d in rule_eval.decisions if d.matched][:5]
-        seq.append(
-            rule_evaluated_event,
-            rules_evaluated=rule_eval.rules_evaluated,
-            rules_matched=rule_eval.rules_matched,
-            top_decisions=matched,
-            summary=rule_eval.summary,
+        self.observability.metrics.record_stage(
+            "process_rules", (time.perf_counter() - t_proc) * 1000,
         )
 
-        # --- Canonical evidence selection ---
-        ces = CanonicalEvidenceSet()
+        process_result = proc_rules.process_result
+        rule_eval = proc_rules.rule_eval
+        matched = proc_rules.matched
+
         evidence_threshold = self.tuner.get_evidence_threshold()
-        for tname, ar_dict in agent_results.items():
-            if ar_dict.get("status") == "success" and ar_dict.get("result"):
-                ev_list = ar_dict["result"].get("evidence", [])
-                ces.add_candidates(tool_evidence_to_candidates(tname, ev_list))
-        ces.add_candidates(hybrid_chunks_to_candidates(retrieval_chunks))
-        ces.add_candidates(rules_to_candidates(matched))
-        if process_result:
-            ces.add_candidates(process_to_candidates(process_result.to_dict()))
-        ces.add_candidates(memory_to_candidates(memory_context))
-
-        accepted_ids, rejected_ids = select_evidence_for_answer(
-            ces,
-            evidence_threshold=evidence_threshold,
-            intent=intent_type,
-            force_accept_sources={"rule"} if matched else set(),
-        )
-        accepted_evidence = ces.to_evidence_dicts(accepted_only=True)
-        ces.mark_used_in_answer(accepted_ids)
-
-        seq.append(
-            evidence_selected_event,
-            accepted_ids=accepted_ids,
-            rejected_ids=rejected_ids,
-            threshold=evidence_threshold,
-            snapshot=[i.to_dict() for i in ces.all_items()],
+        t_ev = time.perf_counter()
+        with self._stage_span("stage.evidence", session_id=session_id):
+            evidence_out = run_evidence_stage(
+                seq,
+                agent_results=tools_out.agent_results,
+                retrieval_chunks=retrieval_chunks,
+                matched_rules=matched,
+                process_result=process_result.to_dict() if process_result else None,
+                memory_context=memory_context,
+                evidence_threshold=evidence_threshold,
+                intent_type=intent_type,
+                force_accept_sources={"rule"} if matched else set(),
+            )
+        self.observability.metrics.record_stage(
+            "evidence", (time.perf_counter() - t_ev) * 1000,
         )
 
-        # --- Answer ---
-        from runtime.llm.answer import _format_citations, _compute_confidence
-        from runtime.llm.plugin import compose_answer_auto
-        answer_text = compose_answer_auto(
-            resolved_query, intent_type, tool_data, accepted_evidence,
-            process_result=ctx.process_result or None,
-            rule_evaluation=ctx.rule_evaluation or None,
-            memory_context=memory_context,
-        )
-        citations = _format_citations(accepted_evidence)
-        confidence = _compute_confidence(intent, accepted_evidence)
-        answer = {
-            "text": answer_text,
-            "citations": citations,
-            "confidence": confidence,
-            "intent": intent_type,
-            "evidence_count": len(accepted_evidence),
-            "tools_used": tools_attempted,
-            "rule_evaluation": rule_eval.to_dict(),
-            "matched_rules": matched,
-            "rule_count": rule_eval.rules_matched,
-            "accepted_evidence_ids": accepted_ids,
-            "canonical_evidence": ces.to_event_payload(),
-        }
-        if process_result:
-            answer["process_result"] = process_result.to_dict()
+        t_ans = time.perf_counter()
+        with self._stage_span("stage.answer", session_id=session_id):
+            answer = build_answer_payload(
+                resolved_query, intent_type, intent, tools_out.tool_data,
+                evidence_out.accepted_evidence,
+                process_result=ctx.process_result or None,
+                rule_evaluation=ctx.rule_evaluation or None,
+                memory_context=memory_context,
+                tools_attempted=tools_out.tools_attempted,
+                matched_rules=matched,
+                rule_eval_dict=rule_eval.to_dict(),
+                accepted_ids=evidence_out.accepted_ids,
+                canonical_payload=evidence_out.ces.to_event_payload(),
+            )
+            run_answer_stage(
+                seq, answer,
+                accepted_ids=evidence_out.accepted_ids,
+                canonical_payload=evidence_out.ces.to_event_payload(),
+            )
         ctx.answer = answer
-
-        seq.append(
-            answer_generated_event,
-            answer=answer["text"],
-            citations=answer.get("citations", []),
-            confidence=answer.get("confidence"),
-            accepted_evidence_ids=accepted_ids,
-            used_in_answer_ids=accepted_ids,
-            canonical_evidence_snapshot=ces.to_event_payload(),
+        self.observability.metrics.record_stage(
+            "answer", (time.perf_counter() - t_ans) * 1000,
         )
 
-        # --- Evaluation (event_store truth only) ---
-        events_for_eval = [e.to_dict() for e in self.event_store.get_session_events(session_id)]
-        resp = self._send_agent(
-            ctx, session_id, seq, "evaluation", "task",
-            {
-                "session_id": session_id,
-                "query": resolved_query,
-                "events": events_for_eval,
-            },
-            trace_id,
+        t_eval = time.perf_counter()
+        with self._stage_span("stage.evaluation", session_id=session_id):
+            eval_out = run_evaluation_stage(
+                self, ctx, seq,
+                session_id=session_id,
+                trace_id=trace_id,
+                resolved_query=resolved_query,
+            )
+        self.observability.metrics.record_stage(
+            "evaluation", (time.perf_counter() - t_eval) * 1000,
         )
-        ctx.evaluation = resp.payload
-        eval_result = ctx.evaluation
-        if ctx.agent_statuses.get("evaluation") == AgentStatus.DEGRADED:
-            ctx.degraded_mode = True
-            seq.append(system_degraded_event, reason="evaluation:degraded")
-
-        seq.append(
-            evaluation_completed_event,
-            total_score=float(eval_result.get("total_score", 0)),
-            dimensions=eval_result.get("dimensions", {}),
-            diagnosis=eval_result.get("diagnosis", ""),
-        )
-        seq.append(
-            hallucination_detected_event,
-            hallucination_score=float(eval_result.get("hallucination_score", 0)),
-            severity=eval_result.get("severity", "NONE"),
-            violations=eval_result.get("violations", []),
-        )
-        feedback_signals = eval_result.get("feedback", [])
-        if feedback_signals:
-            seq.append(system_feedback_generated_event, signals=feedback_signals)
-
-        # --- SelfTuner闭环 ---
-        tuning_config = self.tuner.apply_evaluation(eval_result, feedback_signals)
-        seq.append(
-            tuning_applied_event,
-            weights={
-                "bm25_weight": tuning_config.bm25_weight,
-                "vector_weight": tuning_config.vector_weight,
-                "ontology_weight": tuning_config.ontology_weight,
-            },
-            reason=tuning_config.last_adjustment,
-        )
-
-        seq.append(trace_captured_event, trace_id=trace_id)
+        eval_result = eval_out.eval_result
 
         self.bus.send(AgentMessage(
             str(uuid.uuid4()), "orchestrator", "supervisor", "control",
@@ -713,6 +507,7 @@ class MultiAgentEngine:
         ), ctx)
 
         latency = round((time.perf_counter() - t0) * 1000, 1)
+        self.observability.metrics.record_query(latency, trace_id)
         result = {
             "session_id": session_id,
             "trace_id": trace_id,
@@ -734,6 +529,7 @@ class MultiAgentEngine:
                 "total": len(retrieval_chunks),
             },
             "tuning": self.tuner.stats(),
+            "observability": self.observability.metrics.snapshot(),
             "latency_ms": latency,
             "cached": False,
         }
@@ -741,15 +537,22 @@ class MultiAgentEngine:
         self.cache.set("query", qkey, result, trace_id=trace_id)
 
         if self.working_memory:
+            products = [
+                e.get("value", "") for e in intent.get("entities", [])
+                if e.get("type") == "product"
+            ]
+            if not products and ctx.memory_facts:
+                for key, val in ctx.memory_facts.items():
+                    if key.startswith("product:") and isinstance(val, dict):
+                        name = val.get("value", "")
+                        if name:
+                            products.append(name)
             self.working_memory.update_from_query(
                 session_id=session_id,
                 query_text=query_text,
                 intent=intent,
                 answer=answer,
-                products=[
-                    e.get("value", "") for e in intent.get("entities", [])
-                    if e.get("type") == "product"
-                ],
+                products=products,
                 entities=[e.get("value", "") for e in intent.get("entities", [])],
             )
             if ctx.memory_facts:
@@ -788,6 +591,7 @@ class MultiAgentEngine:
             "agents": self.bus.agent_statuses(),
             "async_exec": self.async_exec.stats(),
             "cache": self.cache.stats(),
+            "observability": self.observability.metrics.snapshot(),
             "event_store": {
                 "total_events": self.event_store.count(),
                 "sessions": self.event_store.session_count(),

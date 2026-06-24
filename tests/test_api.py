@@ -94,7 +94,8 @@ class TestQueryEndpoint:
 class TestSessionTraceEndpoint:
     """Test GET /sessions/{id} endpoint."""
 
-    def test_get_existing_session(self):
+    def test_get_existing_session(self, monkeypatch):
+        monkeypatch.setenv("DEBUG_ENDPOINTS", "1")
         create_resp = client.post("/query", json={"query": "track me"})
         session_id = create_resp.json()["session_id"]
 
@@ -114,7 +115,8 @@ class TestSessionTraceEndpoint:
         response = client.get("/sessions/not valid!")
         assert response.status_code == 422
 
-    def test_reconstructed_state_matches_original(self):
+    def test_reconstructed_state_matches_original(self, monkeypatch):
+        monkeypatch.setenv("DEBUG_ENDPOINTS", "1")
         create_resp = client.post("/query", json={"query": "replay test"})
         session_id = create_resp.json()["session_id"]
         trace_resp = client.get(f"/sessions/{session_id}")
@@ -150,7 +152,19 @@ class TestEventsEndpoint:
         assert "message_count" in data
         assert data["message_count"] > 0
 
-    def test_events_endpoint_disabled_by_default(self):
+    def test_events_endpoint_disabled_by_default(self, monkeypatch):
+        monkeypatch.delenv("DEBUG_ENDPOINTS", raising=False)
         # Without DEBUG_ENDPOINTS, the endpoint should not expose data.
         response = client.get("/events")
+        assert response.status_code == 404
+
+    def test_stats_endpoint_requires_debug(self, monkeypatch):
+        monkeypatch.setenv("DEBUG_ENDPOINTS", "1")
+        response = client.get("/stats")
+        assert response.status_code == 200
+        assert "observability" in response.json()
+
+    def test_stats_disabled_by_default(self, monkeypatch):
+        monkeypatch.delenv("DEBUG_ENDPOINTS", raising=False)
+        response = client.get("/stats")
         assert response.status_code == 404

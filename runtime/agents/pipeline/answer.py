@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from runtime.llm.plugin import compose_answer_auto
 from runtime.llm.answer import _format_citations, _compute_confidence
+from runtime.engine.event_store import answer_generated_event
+
+if TYPE_CHECKING:
+    from runtime.agents.pipeline._helpers import EventSequencer
 
 
 def build_answer_payload(
@@ -30,7 +34,7 @@ def build_answer_payload(
         rule_evaluation=rule_evaluation,
         memory_context=memory_context,
     )
-    return {
+    answer = {
         "text": answer_text,
         "citations": _format_citations(accepted_evidence),
         "confidence": _compute_confidence(intent, accepted_evidence),
@@ -43,3 +47,25 @@ def build_answer_payload(
         "accepted_evidence_ids": accepted_ids or [],
         "canonical_evidence": canonical_payload or {},
     }
+    if process_result:
+        answer["process_result"] = process_result
+    return answer
+
+
+def run_answer_stage(
+    seq: "EventSequencer",
+    answer: Dict[str, Any],
+    *,
+    accepted_ids: List[str],
+    canonical_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    seq.append(
+        answer_generated_event,
+        answer=answer["text"],
+        citations=answer.get("citations", []),
+        confidence=answer.get("confidence"),
+        accepted_evidence_ids=accepted_ids,
+        used_in_answer_ids=accepted_ids,
+        canonical_evidence_snapshot=canonical_payload,
+    )
+    return answer

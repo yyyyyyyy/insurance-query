@@ -98,6 +98,8 @@ class RuntimeState:
     tuning_weights: Dict[str, float] = field(default_factory=dict)
     accepted_evidence_ids: List[str] = field(default_factory=list)
     evidence_selection: Dict[str, Any] = field(default_factory=dict)
+    turns: List[Dict[str, Any]] = field(default_factory=list)
+    current_turn_index: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -166,4 +168,6 @@ class RuntimeState:
             "tuning_weights": self.tuning_weights,
             "accepted_evidence_ids": self.accepted_evidence_ids,
             "evidence_selection": self.evidence_selection,
+            "turns": self.turns,
+            "current_turn_index": self.current_turn_index,
         }

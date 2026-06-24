@@ -278,9 +278,11 @@ class TestCompareTool:
 
     def test_compare_returns_evidence(self):
         t = CompareTool()
-        r = t.run({"product_ids": ["P001", "P002"]})
+        r = t.run({"product_ids": ["P001", "P002"], "dimensions": ["deductible"]})
         assert r.has_evidence
         assert r.evidence[0].source_type == SourceType.COMPARISON_ENGINE
+        assert "deductible" in r.evidence[0].clause
+        assert "P001" in r.evidence[0].content or "e生保" in r.evidence[0].content
 
     def test_compare_with_unknown_products(self):
         t = CompareTool()

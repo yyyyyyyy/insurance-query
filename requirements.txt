@@ -1,28 +1,29 @@
 # InsureQuery Runtime - Dependencies
 # Core
-pydantic>=2.5.0
-fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
-httpx>=0.26.0
+pydantic>=2.5.0,<3.0.0
+fastapi>=0.109.0,<1.0.0
+uvicorn[standard]>=0.27.0,<1.0.0
+httpx>=0.26.0,<1.0.0
 
 # Knowledge Layer
-numpy>=1.24.0
-scikit-learn>=1.3.0
-networkx>=3.2
-jieba>=0.42.1
+numpy>=1.24.0,<3.0.0
+scikit-learn>=1.3.0,<2.0.0
+networkx>=3.2,<4.0.0
+jieba>=0.42.1,<1.0.0
 
 # Vector Database (Sprint 6)
-chromadb>=0.5.0
+chromadb>=0.5.0,<1.0.0
 
 # Embedding (Sprint 6)
-sentence-transformers>=3.0.0
+sentence-transformers>=3.0.0,<4.0.0
 
 # PDF parsing (policy document ingestion)
-PyPDF2>=3.0.0
+PyPDF2>=3.0.0,<4.0.0
 
 # Testing
-pytest>=8.0.0
-pytest-asyncio>=0.23.0
+pytest>=8.0.0,<9.0.0
+pytest-asyncio>=0.23.0,<1.0.0
+pytest-timeout>=2.2.0,<3.0.0
 
 # Dev
-watchfiles>=0.21.0
+watchfiles>=0.21.0,<1.0.0

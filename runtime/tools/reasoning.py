@@ -60,9 +60,26 @@ class CompareTool(BaseTool[CompareInput, CompareOutput]):
                 row[f"{p['product_id']}_name"] = p["name"]
             comparison_rows.append(row)
 
-        evidence = [make_evidence("COMPARE_ENGINE", f"compare_{pid}"[:20],
-                    "Product comparison result", SourceType.COMPARISON_ENGINE)
-                    for pid in input_data.product_ids]
+        evidence = []
+        for row in comparison_rows:
+            dim = row["dimension"]
+            unit = row.get("unit", "")
+            parts = []
+            for p in products:
+                pid = p["product_id"]
+                val = row.get(pid)
+                if val is not None:
+                    parts.append(f"{p['name']}={val}{unit}")
+            if not parts:
+                continue
+            content = f"{dim}: {' | '.join(parts)}"
+            evidence.append(make_evidence(
+                "COMPARE_ENGINE",
+                f"compare:{dim}",
+                content,
+                SourceType.COMPARISON_ENGINE,
+                clause=dim,
+            ))
 
         return ToolResult(tool_name=self.name, status=ToolStatus.SUCCESS,
                          data={"comparison": {"products": [{"id": p["product_id"], "name": p["name"]}
@@ -142,8 +159,12 @@ class EligibilityCheckTool(BaseTool[EligibilityCheckInput, EligibilityCheckOutpu
                     f"Eligibility check: {'eligible' if eligible else 'not eligible'}",
                     SourceType.PRODUCT_CATALOG, document_title=product["name"])]
 
+        data = {"eligible": eligible, "reasons": reasons,
+                "conditions": eligibility,
+                "age": input_data.age if input_data.age is not None else None,
+                "product_id": input_data.product_id}
+
         return ToolResult(tool_name=self.name,
                          status=ToolStatus.SUCCESS,
-                         data={"eligible": eligible, "reasons": reasons,
-                              "conditions": eligibility},
+                         data=data,
                          evidence=evidence)
