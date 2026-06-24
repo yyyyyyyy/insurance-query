@@ -5,10 +5,7 @@ from __future__ import annotations
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-import pytest
-
 from infra.cache.store import TraceAwareCache
-from infra.db.event_store import SqliteEventStore
 from runtime.agents.bus import AgentBus, AgentMessage, AgentContext, AgentStatus, BaseAgent
 from runtime.agents.orchestrator import MultiAgentEngine
 from runtime.engine.event_store import user_query_event
