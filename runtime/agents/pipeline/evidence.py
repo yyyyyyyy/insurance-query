@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Set, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Set, Tuple
 
 from runtime.evidence.canonical import CanonicalEvidenceSet
 from runtime.evidence.selector import select_evidence_for_answer
@@ -16,9 +16,6 @@ from runtime.evidence.adapters import (
 )
 from runtime.engine.event_store import evidence_selected_event
 from runtime.agents.pipeline._helpers import EventSequencer
-
-if TYPE_CHECKING:
-    from runtime.agents.bus import AgentContext
 
 
 @dataclass

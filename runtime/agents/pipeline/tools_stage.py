@@ -46,7 +46,6 @@ def run_tools_stage(
         trace_id,
     )
     agent_results = resp.payload.get("results", {})
-    tool_memory_facts = resp.payload.get("memory_facts", {})
     ctx.execution_graph.append({"agent": "tool", "tools": list(agent_results.keys())})
 
     tool_data: Dict[str, Any] = {}

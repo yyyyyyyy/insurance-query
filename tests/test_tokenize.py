@@ -1,7 +1,5 @@
 """Tests for shared Chinese/English tokenizer."""
 
-import pytest
-
 from knowledge.retrieval.tokenize import tokenize_chinese
 
 

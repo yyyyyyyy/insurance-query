@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
 from runtime.agents.bus import AgentMessage, AgentContext, AgentStatus
 from runtime.engine.event_store import (

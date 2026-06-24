@@ -9,7 +9,7 @@ produces the identical state. This enables deterministic replay and debugging.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
 
 from runtime.engine.event_store import Event, EventType
 from runtime.engine.state import Answer, Intent, PlanStep, RuntimeState, ToolResult

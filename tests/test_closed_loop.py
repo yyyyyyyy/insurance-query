@@ -1,7 +1,5 @@
 """Closed-loop runtime kernel v3 integration tests (S1–S8)."""
 
-import os
-
 import pytest
 
 from evaluation.feedback.tuner import SelfTuner

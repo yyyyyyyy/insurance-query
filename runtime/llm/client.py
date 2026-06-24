@@ -79,7 +79,7 @@ class DeepSeekClient:
                     content = data["choices"][0]["message"]["content"]
                     return str(content).strip()
                 except (KeyError, IndexError, TypeError) as exc:
-                    raise LLMClientError(f"Unexpected DeepSeek response shape") from exc
+                    raise LLMClientError("Unexpected DeepSeek response shape") from exc
 
             except httpx.HTTPStatusError as exc:
                 status = exc.response.status_code

@@ -7,7 +7,6 @@ Pipeline:
 """
 
 from __future__ import annotations
-import os
 import threading
 import time
 import uuid
@@ -489,7 +488,7 @@ class MultiAgentEngine:
 
         t_eval = time.perf_counter()
         with self._stage_span("stage.evaluation", session_id=session_id):
-            eval_out = run_evaluation_stage(
+            run_evaluation_stage(
                 self, ctx, seq,
                 session_id=session_id,
                 trace_id=trace_id,
@@ -498,8 +497,6 @@ class MultiAgentEngine:
         self.observability.metrics.record_stage(
             "evaluation", (time.perf_counter() - t_eval) * 1000,
         )
-        eval_result = eval_out.eval_result
-
         self.bus.send(AgentMessage(
             str(uuid.uuid4()), "orchestrator", "supervisor", "control",
             {"action": "final_check", "health": ctx.system_health},
