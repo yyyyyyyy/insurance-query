@@ -31,12 +31,23 @@ class TestSqliteEventStoreConcurrency:
             with store.transaction():
                 store.append(user_query_event(sid, 1, text))
 
-        t1 = threading.Thread(target=write_session, args=("s-a", "query-a"))
-        t2 = threading.Thread(target=write_session, args=("s-b", "query-b"))
+        errors: list[BaseException] = []
+
+        def write_session_checked(sid: str, text: str) -> None:
+            try:
+                write_session(sid, text)
+            except BaseException as exc:
+                errors.append(exc)
+
+        t1 = threading.Thread(target=write_session_checked, args=("s-a", "query-a"))
+        t2 = threading.Thread(target=write_session_checked, args=("s-b", "query-b"))
         t1.start()
         t2.start()
         t1.join(timeout=30)
         t2.join(timeout=30)
+
+        assert not errors, f"worker threads failed: {errors!r}"
+        assert not t1.is_alive() and not t2.is_alive(), "worker threads did not finish"
 
         assert len(store.get_session_events("s-a")) == 1
         assert len(store.get_session_events("s-b")) == 1
